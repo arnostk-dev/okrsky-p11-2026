@@ -87,7 +87,8 @@
 <div class="hint" id="hint">
   <b>Vyber datový soubor</b><br>
   Změny stavů se budou ukládat přímo do souboru v telefonu (uvidíš ho v Total Commanderu). Funguje i offline.
-  <button class="primary" id="pickfile">Vybrat / vytvořit soubor</button>
+  <button class="primary" id="openfile">📂 Otevřít existující soubor</button>
+  <button class="primary" id="pickfile" style="margin-top:8px">➕ Vytvořit nový soubor</button>
   <button id="skipfile" style="margin-top:8px;width:100%;justify-content:center;background:transparent">Zatím jen do prohlížeče</button>
 </div>
 
@@ -188,29 +189,45 @@ function setSave(t){ document.getElementById('savestate').textContent=t; }
 async function pickFile(create){
   try{
     if(create){
+      // VYTVOŘIT NOVÝ – save dialog (může přepsat, ale je to záměr)
       fileHandle = await window.showSaveFilePicker({
         suggestedName:'pochuzka_p11.json',
         types:[{description:'JSON',accept:{'application/json':['.json']}}]
       });
+      // do nového souboru rovnou zapíšeme aktuální stav z paměti
+      await persist();
+    }else{
+      // OTEVŘÍT EXISTUJÍCÍ – open dialog (nepřepisuje, jen čte)
+      const [h]=await window.showOpenFilePicker({
+        types:[{description:'JSON',accept:{'application/json':['.json']}}],
+        multiple:false
+      });
+      fileHandle=h;
+      // načti data ze souboru a SLUČ s tím, co už je v paměti
+      let fromFile={};
+      try{
+        const f=await fileHandle.getFile();
+        const txt=await f.text();
+        if(txt.trim()) fromFile=JSON.parse(txt);
+      }catch(e){ alert('Soubor nejde přečíst nebo není platný JSON.'); return; }
+      // sloučení: paměť (čerstvě odklikané) má přednost před souborem
+      stav=Object.assign({}, fromFile, stav);
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(stav)); }catch(e){}
+      // zpět do souboru zapíšeme až sloučený výsledek
+      await persist();
     }
-    // pokud uz soubor existuje, nacti z nej
-    try{
-      const f=await fileHandle.getFile();
-      const txt=await f.text();
-      if(txt.trim()){ stav=JSON.parse(txt); }
-    }catch(e){}
-    await persist();
     document.getElementById('hint').style.display='none';
     render();
-  }catch(e){ /* uzivatel zrusil */ }
+  }catch(e){ /* uzivatel zrusil dialog */ }
 }
 
+document.getElementById('openfile').onclick=()=>pickFile(false);
 document.getElementById('pickfile').onclick=()=>pickFile(true);
 document.getElementById('skipfile').onclick=()=>{
   document.getElementById('hint').style.display='none'; setSave('jen v prohlížeči'); render();
 };
 document.getElementById('savefile').onclick=async ()=>{
-  if(!fileHandle){ await pickFile(true); }
+  if(!fileHandle){ document.getElementById('hint').style.display='block'; }
   else { await persist(); }
 };
 
@@ -223,17 +240,23 @@ document.querySelectorAll('#filter button').forEach(b=>{
 });
 
 // geolokace
-let meMarker=null, meAccuracy=null;
+let meMarker=null, meAccuracy=null, meTimer=null;
+function clearMe(){
+  if(meTimer){ clearTimeout(meTimer); meTimer=null; }
+  if(meMarker){ map.removeLayer(meMarker); meMarker=null; }
+  if(meAccuracy){ map.removeLayer(meAccuracy); meAccuracy=null; }
+}
 document.getElementById('gps').onclick=()=>{
   if(!navigator.geolocation){ alert('Geolokace není dostupná'); return; }
   setSave('hledám polohu…');
   navigator.geolocation.getCurrentPosition(p=>{
     const {latitude,longitude,accuracy}=p.coords;
-    if(meMarker){ map.removeLayer(meMarker); map.removeLayer(meAccuracy); }
-    meAccuracy=L.circle([latitude,longitude],{radius:accuracy,color:'#3b9dff',weight:1,fillColor:'#3b9dff',fillOpacity:0.12}).addTo(map);
-    meMarker=L.circleMarker([latitude,longitude],{radius:8,fillColor:'#3b9dff',color:'#fff',weight:2,fillOpacity:1}).addTo(map);
+    clearMe();
+    meAccuracy=L.circle([latitude,longitude],{radius:accuracy,color:'#3b9dff',weight:1,fillColor:'#3b9dff',fillOpacity:0.12,interactive:false}).addTo(map);
+    meMarker=L.circleMarker([latitude,longitude],{radius:8,fillColor:'#3b9dff',color:'#fff',weight:2,fillOpacity:1,interactive:false}).addTo(map);
     map.setView([latitude,longitude],17);
     setSave(fileHandle?'uloženo do souboru':'jen v prohlížeči');
+    meTimer=setTimeout(clearMe,5000);
   },err=>{
     alert('Polohu se nepodařilo zjistit: '+err.message);
   },{enableHighAccuracy:true,timeout:8000,maximumAge:5000});
