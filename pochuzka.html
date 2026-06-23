@@ -17,7 +17,6 @@
   html,body{height:100%;background:var(--bg);color:var(--text);
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
   #map{position:absolute;inset:0;background:#0d0f12}
-  .basemap-bright{filter:brightness(1.85) contrast(1.15) saturate(0.9)}
 
   /* horni listek */
   .topbar{position:absolute;top:0;left:0;right:0;z-index:1000;
@@ -109,8 +108,8 @@ try{ const s=localStorage.getItem(STORAGE_KEY); if(s) stav=JSON.parse(s); }catch
 
 const map = L.map('map',{zoomControl:false,tap:true}).setView([50.033,14.505],14);
 L.control.zoom({position:'topright'}).addTo(map);
-const baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-  maxZoom:20, attribution:'&copy; OpenStreetMap, &copy; CARTO', className:'basemap-bright'
+const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19, attribution:'&copy; OpenStreetMap'
 }).addTo(map);
 
 const COL={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',none:'#ffffff'};
