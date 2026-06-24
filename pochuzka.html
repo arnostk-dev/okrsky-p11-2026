@@ -197,24 +197,26 @@ async function pickFile(create){
       // do nového souboru rovnou zapíšeme aktuální stav z paměti
       await persist();
     }else{
-      // OTEVŘÍT EXISTUJÍCÍ – open dialog (nepřepisuje, jen čte)
+      // OTEVŘÍT EXISTUJÍCÍ – open dialog (jen ČTE, nikdy nezapisuje sám od sebe)
       const [h]=await window.showOpenFilePicker({
         types:[{description:'JSON',accept:{'application/json':['.json']}}],
         multiple:false
       });
-      fileHandle=h;
-      // načti data ze souboru a SLUČ s tím, co už je v paměti
-      let fromFile={};
+      const f=await h.getFile();
+      const txt=await f.text();
+      let fromFile;
       try{
-        const f=await fileHandle.getFile();
-        const txt=await f.text();
-        if(txt.trim()) fromFile=JSON.parse(txt);
-      }catch(e){ alert('Soubor nejde přečíst nebo není platný JSON.'); return; }
-      // sloučení: paměť (čerstvě odklikané) má přednost před souborem
-      stav=Object.assign({}, fromFile, stav);
+        fromFile = txt.trim() ? JSON.parse(txt) : {};
+      }catch(e){
+        alert('Soubor není platný JSON – neotevírám ho, aby se nepřepsal.');
+        return; // fileHandle ZŮSTÁVÁ null → nehrozí přepis
+      }
+      // SOUBOR je zdroj pravdy. Z paměti přidám jen klíče, které v souboru NEJSOU.
+      stav = Object.assign({}, stav, fromFile);
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(stav)); }catch(e){}
-      // zpět do souboru zapíšeme až sloučený výsledek
-      await persist();
+      // handle nastavíme až TEĎ, a ZÁMĚRNĚ NEZAPISUJEME.
+      // Soubor se přepíše až při prvním reálném kliknutí na dům (persist v render/klik).
+      fileHandle = h;
     }
     document.getElementById('hint').style.display='none';
     render();
@@ -271,6 +273,7 @@ if(!window.showSaveFilePicker){
     a.download='pochuzka_p11.json'; a.click();
   };
   document.getElementById('pickfile').textContent='Pokračovat';
+  document.getElementById('openfile').style.display='none';
   document.getElementById('pickfile').onclick=()=>{
     document.getElementById('hint').style.display='none'; render();
   };
