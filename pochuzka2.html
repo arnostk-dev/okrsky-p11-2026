@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Pochůzka P11</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --bg:#0d0f12; --panel:#161a1f; --line:#2a2f37;
+    --zluta:#FFF84D; --text:#e8eaed; --dim:#8b929c;
+    --n:#9aa0a8;      /* nedostal se - seda */
+    --a:#36d07a;      /* do schranek - zelena */
+    --x:#3b9dff;      /* stojan - modra */
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+  #map{position:absolute;inset:0;background:#0d0f12}
+
+  /* horni listek */
+  .topbar{position:absolute;top:0;left:0;right:0;z-index:1000;
+    background:linear-gradient(180deg,rgba(13,15,18,.95),rgba(13,15,18,.0));
+    padding:10px 12px 18px;display:flex;align-items:center;gap:10px;pointer-events:none}
+  .topbar > *{pointer-events:auto}
+  .brand{font-weight:800;font-size:15px;color:var(--zluta);letter-spacing:.3px;white-space:nowrap}
+  .who{font-size:11px;color:var(--dim);cursor:pointer;border:1px solid var(--line);
+    background:var(--panel);border-radius:20px;padding:3px 9px;white-space:nowrap}
+  .counts{display:flex;gap:6px;font-size:12px;font-weight:700;margin-left:auto}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:5px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  /* spodni ovladaci panel */
+  .controls{position:absolute;left:0;right:0;bottom:0;z-index:1000;
+    background:linear-gradient(0deg,rgba(13,15,18,.96),rgba(13,15,18,.0));
+    padding:24px 12px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;pointer-events:none}
+  .controls > *{pointer-events:auto}
+  button{font-family:inherit;font-weight:700;font-size:14px;border:none;border-radius:12px;
+    padding:12px 14px;background:var(--panel);color:var(--text);border:1px solid var(--line);
+    display:flex;align-items:center;gap:7px;cursor:pointer;min-height:46px}
+  button:active{transform:scale(.97)}
+  button.primary{background:var(--zluta);color:#000;border-color:var(--zluta)}
+  button.gps{background:#1b3a5c;border-color:#27517d;color:#cfe6ff}
+  .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .seg button{border:none;border-radius:0;background:transparent;min-height:44px;padding:10px 12px;font-size:13px}
+  .seg button.on{background:var(--zluta);color:#000}
+  .save-state{font-size:11px;color:var(--dim);margin-left:6px;align-self:center;min-width:64px}
+
+  /* popup karta domu */
+  .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border-radius:14px;border:1px solid var(--line)}
+  .leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
+  .leaflet-popup-content{margin:13px 15px;min-width:210px}
+  .pop-h{font-size:17px;font-weight:800;margin-bottom:2px}
+  .pop-sub{font-size:12px;color:var(--dim);margin-bottom:11px}
+  .pop-sch{color:var(--zluta);font-weight:700}
+  .stav-row{display:flex;gap:7px;margin-bottom:9px}
+  .stav-row button{flex:1;justify-content:center;font-size:15px;min-height:50px;font-weight:800}
+  .sb-n.on{background:var(--n);color:#000;border-color:var(--n)}
+  .sb-a.on{background:var(--a);color:#000;border-color:var(--a)}
+  .sb-x.on{background:var(--x);color:#000;border-color:var(--x)}
+  .pop-pozn{display:flex;gap:6px;margin-bottom:9px}
+  .pop-pozn input{flex:1;background:#0d0f12;border:1px solid var(--line);border-radius:10px;
+    color:var(--text);font-family:inherit;font-size:14px;padding:9px 10px;min-width:0}
+  .pop-pozn button{padding:9px 12px;min-height:0}
+  .pop-meta{font-size:11px;color:var(--dim);margin-bottom:8px;min-height:14px}
+  .pop-clear{font-size:12px;color:var(--dim);text-align:center;cursor:pointer;padding:4px}
+
+  /* PIN přihlašovací obrazovka */
+  .gate{position:absolute;inset:0;z-index:2000;background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:14px}
+  .gate h1{color:var(--zluta);font-size:22px;font-weight:800}
+  .gate p{color:var(--dim);font-size:13px;text-align:center;max-width:280px;line-height:1.5}
+  .pin-box{display:flex;gap:8px;margin-top:4px}
+  .pin-box input{width:54px;height:64px;text-align:center;font-size:28px;font-weight:800;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;color:var(--text)}
+  .pin-box input:focus{outline:none;border-color:var(--zluta)}
+  .gate .err{color:#ff6b6b;font-size:13px;min-height:18px;font-weight:700}
+  .gate .biz{width:100%;max-width:240px;justify-content:center}
+
+  .hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;
+    max-width:300px;font-size:14px;line-height:1.5;text-align:center;color:var(--dim)}
+  .hint b{color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- PIN GATE -->
+<div class="gate" id="gate">
+  <h1>Pochůzka P11</h1>
+  <p>Zadej svůj 4místný PIN. Stavy domů se sdílí živě se všemi roznašeči.</p>
+  <div class="pin-box" id="pinbox">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="0">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="1">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="2">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="3">
+  </div>
+  <div class="err" id="pinerr"></div>
+</div>
+
+<div id="map"></div>
+
+<div class="topbar">
+  <span class="brand">Pochůzka P11</span>
+  <span class="who" id="who"></span>
+  <div class="counts" id="counts"></div>
+</div>
+
+<div class="controls">
+  <div class="seg" id="filter">
+    <button data-f="moje" class="on">Moje</button>
+    <button data-f="vse">Vše</button>
+    <button data-f="zbyva">Zbývá</button>
+  </div>
+  <button class="gps" id="gps">📍 Já</button>
+  <span class="save-state" id="savestate">—</span>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   KONFIGURACE — publishable klíč + URL jsou vědomě veřejné
+   (ochranu dělá RLS + serverové ověření PINu, viz README)
+   ============================================================ */
+const SUPABASE_URL = 'https://subqgsfbgqbtvntjydoz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_VfAWVaGLsFN7H-cZSENGHA_fviIkJD1';
+const DATA_URL     = 'domy.json';
+
+const LS_PIN   = 'pochuzka_p11_pin';     // cache PINu
+const LS_NAME  = 'pochuzka_p11_jmeno';   // cache jména
+const LS_QUEUE = 'pochuzka_p11_fronta';  // offline fronta neodeslaných zápisů
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  realtime:{ params:{ eventsPerSecond:5 } }
+});
+
+let DOMY = [];
+let PIN  = null;
+let JMENO = null;
+
+/* ---- klíč domu: třídílný ok|cd|label (ok|cd není unikátní!) ---- */
+function key(d){ return d.ok+'|'+String(d.cd)+'|'+d.label; }
+
+/* ============================================================
+   PIN GATE
+   ============================================================ */
+const gate = document.getElementById('gate');
+const pinInputs = [...document.querySelectorAll('#pinbox input')];
+const pinErr = document.getElementById('pinerr');
+
+pinInputs.forEach((inp,idx)=>{
+  inp.addEventListener('input',()=>{
+    inp.value = inp.value.replace(/\D/g,'');
+    if(inp.value && idx<3) pinInputs[idx+1].focus();
+    if(pinInputs.every(i=>i.value)) submitPin();
+  });
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Backspace' && !inp.value && idx>0){ pinInputs[idx-1].focus(); pinInputs[idx-1].value=''; }
+  });
+});
+
+function readPin(){ return pinInputs.map(i=>i.value).join(''); }
+function clearPinInputs(){ pinInputs.forEach(i=>i.value=''); pinInputs[0].focus(); }
+
+async function submitPin(){
+  const pin = readPin();
+  if(pin.length!==4) return;
+  pinErr.textContent='';
+  pinInputs.forEach(i=>i.disabled=true);
+  try{
+    const jmeno = await overPin(pin);
+    if(!jmeno){
+      pinErr.textContent='Neplatný PIN';
+      pinInputs.forEach(i=>i.disabled=false);
+      clearPinInputs();
+      return;
+    }
+    PIN=pin; JMENO=jmeno;
+    try{ localStorage.setItem(LS_PIN,pin); localStorage.setItem(LS_NAME,jmeno); }catch(e){}
+    startApp();
+  }catch(e){
+    // offline / síť nedostupná — pustíme dál jen pokud PIN sedí s cache
+    const cachePin = localStorage.getItem(LS_PIN);
+    const cacheName = localStorage.getItem(LS_NAME);
+    if(cachePin===pin && cacheName){
+      PIN=pin; JMENO=cacheName;
+      startApp(true);
+    }else{
+      pinErr.textContent='Bez signálu a PIN není v paměti';
+      pinInputs.forEach(i=>i.disabled=false);
+      clearPinInputs();
+    }
+  }
+}
+
+async function overPin(pin){
+  const { data, error } = await sb.rpc('over_pin',{ p_pin: pin });
+  if(error) throw error;
+  return data; // jméno nebo null
+}
+
+// auto-login z cache (PIN ověříme on-line po startu; když nejde síť, věříme cache)
+(function tryAutoLogin(){
+  const p = localStorage.getItem(LS_PIN);
+  const n = localStorage.getItem(LS_NAME);
+  if(p && p.length===4){
+    pinInputs.forEach((inp,i)=>inp.value=p[i]);
+    submitPin();
+  }
+})();
+
+/* ============================================================
+   START APP (až po úspěšném PINu)
+   ============================================================ */
+let started=false;
+function startApp(offline){
+  if(started) return; started=true;
+  gate.style.display='none';
+  document.getElementById('who').textContent='👤 '+JMENO;
+
+  fetch(DATA_URL)
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(data=>{ DOMY=data; initMap(); loadStavy(); subscribeRealtime(); flushQueue(); })
+    .catch(e=>{
+      document.body.insertAdjacentHTML('beforeend',
+        '<div class="hint"><b>Chyba načtení dat</b><br>domy.json se nepodařilo načíst ('+e.message+').<br>'+
+        'Otevři appku přes web server (GitHub Pages), ne přímo ze souboru.</div>');
+    });
+}
+
+document.getElementById('who').onclick=()=>{
+  if(!confirm('Odhlásit '+JMENO+'? Bude potřeba znovu zadat PIN.')) return;
+  try{ localStorage.removeItem(LS_PIN); localStorage.removeItem(LS_NAME); }catch(e){}
+  location.reload();
+};
+
+/* ============================================================
+   MAPA + STAV
+   ============================================================ */
+let map, layer, markerByKey={}, filter='moje';
+// lokální zrcadlo serverového stavu: { "ok|cd|label": {stav, pozn, kdo, kdy} }
+let stav = {};
+
+const COL={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',none:'#ffffff'};
+
+function initMap(){
+  map = L.map('map',{zoomControl:false,tap:true}).setView([50.033,14.505],14);
+  L.control.zoom({position:'topright'}).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19, attribution:'&copy; OpenStreetMap'
+  }).addTo(map);
+  layer=L.layerGroup().addTo(map);
+
+  document.querySelectorAll('#filter button').forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll('#filter button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); filter=b.getAttribute('data-f'); render();
+    };
+  });
+  render();
+}
+
+function stOf(k){ return (stav[k]&&stav[k].stav)||''; }
+
+function visible(d){
+  if(filter==='moje') return d.moje;
+  if(filter==='zbyva'){ const s=stOf(key(d)); return d.moje && s!=='A' && s!=='X'; }
+  return true;
+}
+
+function render(){
+  if(!map) return;
+  layer.clearLayers(); markerByKey={};
+  let n=0,a=0,x=0,tot=0;
+  for(const d of DOMY){
+    const k=key(d);
+    const s=stOf(k);
+    if(d.moje){ tot++; if(s==='N')n++; else if(s==='A')a++; else if(s==='X')x++; }
+    if(!visible(d)) continue;
+    const col = s? COL[s] : COL.none;
+    const r = s? 6 : 4.5;
+    const m=L.circleMarker([d.lat,d.lon],{
+      radius:r, fillColor:col, color:'#000', weight:1, fillOpacity:s?0.95:0.6
+    });
+    m.on('click',()=>openDom(d,m));
+    m.addTo(layer); markerByKey[k]=m;
+  }
+  document.getElementById('counts').innerHTML =
+    '<span class="chip"><span class="dot" style="background:'+COL.A+'"></span>'+a+'</span>'+
+    '<span class="chip"><span class="dot" style="background:'+COL.X+'"></span>'+x+'</span>'+
+    '<span class="chip"><span class="dot" style="background:'+COL.N+'"></span>'+n+'</span>'+
+    '<span class="chip" style="color:var(--dim)">'+(a+x)+'/'+tot+'</span>';
+}
+
+function openDom(d,m){
+  const k=key(d);
+  const rec=stav[k]||{};
+  const cur=rec.stav||'';
+  const sch = d.sch? ' · <span class="pop-sch">'+d.sch+' schr. zvenku</span>' : '';
+  const meta = rec.kdo? (rec.kdo+(rec.kdy?' · '+fmtKdy(rec.kdy):'')) : '';
+  const poznVal = (rec.pozn||'').replace(/"/g,'&quot;');
+  const html =
+    '<div class="pop-h">'+d.label+'</div>'+
+    '<div class="pop-sub">'+d.ul+' · okrsek '+d.ok+sch+'</div>'+
+    '<div class="stav-row">'+
+      '<button class="sb-n '+(cur==='N'?'on':'')+'" data-s="N">N</button>'+
+      '<button class="sb-a '+(cur==='A'?'on':'')+'" data-s="A">A</button>'+
+      '<button class="sb-x '+(cur==='X'?'on':'')+'" data-s="X">X</button>'+
+    '</div>'+
+    '<div class="pop-pozn">'+
+      '<input id="poznIn" maxlength="50" placeholder="poznámka (počet schránek…)" value="'+poznVal+'">'+
+      '<button class="primary" id="poznSave">OK</button>'+
+    '</div>'+
+    '<div class="pop-meta">'+meta+'</div>'+
+    '<div class="pop-clear" data-s="">vymazat stav</div>';
+  m.bindPopup(html,{closeButton:false,offset:[0,-4]}).openPopup();
+  setTimeout(()=>{
+    const pop=document.querySelector('.leaflet-popup');
+    if(!pop) return;
+    pop.querySelectorAll('.stav-row button').forEach(b=>{
+      b.onclick=()=>{
+        const v=b.getAttribute('data-s');
+        const pozn=(pop.querySelector('#poznIn').value||'').trim().slice(0,50);
+        setStav(d,k,v,pozn||null);
+        map.closePopup(); 
+      };
+    });
+    const sv=pop.querySelector('#poznSave');
+    if(sv) sv.onclick=()=>{
+      const pozn=(pop.querySelector('#poznIn').value||'').trim().slice(0,50);
+      // jen poznámka, stav neměním (server coalesce nechá starý)
+      setStav(d,k,null,pozn||'');
+      map.closePopup();
+    };
+    const cl=pop.querySelector('.pop-clear');
+    if(cl) cl.onclick=()=>{ clearStav(d,k); map.closePopup(); };
+  },30);
+}
+
+function fmtKdy(iso){
+  try{
+    const dt=new Date(iso);
+    return dt.toLocaleString('cs-CZ',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+  }catch(e){ return ''; }
+}
+
+/* ============================================================
+   ZÁPIS / MAZÁNÍ — přes Supabase RPC, s offline frontou
+   ============================================================ */
+function setStav(d,k,stavVal,poznVal){
+  // optimistický zápis do lokálního zrcadla
+  const prev = stav[k] || {};
+  stav[k] = {
+    stav: stavVal!==null ? stavVal : (prev.stav||null),
+    pozn: poznVal!==null ? poznVal : (prev.pozn||null),
+    kdo: JMENO, kdy: new Date().toISOString()
+  };
+  render();
+  sendZapis({ dum:k, stav:stavVal, pozn:poznVal });
+}
+
+function clearStav(d,k){
+  delete stav[k];
+  render();
+  sendSmaz({ dum:k });
+}
+
+async function sendZapis(op){
+  setSave('ukládám…');
+  try{
+    const { error } = await sb.rpc('zapis_stav',{
+      p_pin:PIN, p_dum:op.dum,
+      p_stav: op.stav,           // null = neměnit
+      p_pozn: op.pozn            // null = neměnit
+    });
+    if(error) throw error;
+    setSave('uloženo');
+  }catch(e){
+    queuePush({ typ:'zapis', ...op });
+    setSave('offline – ve frontě');
+  }
+}
+
+async function sendSmaz(op){
+  setSave('mažu…');
+  try{
+    const { error } = await sb.rpc('smaz_stav',{ p_pin:PIN, p_dum:op.dum });
+    if(error) throw error;
+    setSave('smazáno');
+  }catch(e){
+    queuePush({ typ:'smaz', ...op });
+    setSave('offline – ve frontě');
+  }
+}
+function setSave(t){ const el=document.getElementById('savestate'); if(el) el.textContent=t; }
+
+/* ---- offline fronta ---- */
+function queueGet(){ try{ return JSON.parse(localStorage.getItem(LS_QUEUE)||'[]'); }catch(e){ return []; } }
+function queueSet(q){ try{ localStorage.setItem(LS_QUEUE,JSON.stringify(q)); }catch(e){} }
+function queuePush(op){ const q=queueGet(); q.push(op); queueSet(q); }
+
+async function flushQueue(){
+  let q=queueGet();
+  if(!q.length) return;
+  const zbytek=[];
+  for(const op of q){
+    try{
+      if(op.typ==='zapis'){
+        const { error } = await sb.rpc('zapis_stav',{ p_pin:PIN, p_dum:op.dum, p_stav:op.stav, p_pozn:op.pozn });
+        if(error) throw error;
+      }else if(op.typ==='smaz'){
+        const { error } = await sb.rpc('smaz_stav',{ p_pin:PIN, p_dum:op.dum });
+        if(error) throw error;
+      }
+    }catch(e){ zbytek.push(op); }
+  }
+  queueSet(zbytek);
+  if(!zbytek.length && q.length) setSave('fronta odeslána');
+}
+// po obnovení signálu zkus frontu
+window.addEventListener('online',()=>{ if(started){ flushQueue(); } });
+setInterval(()=>{ if(started && navigator.onLine && queueGet().length) flushQueue(); },20000);
+
+/* ============================================================
+   NAČTENÍ STAVŮ + REALTIME
+   ============================================================ */
+async function loadStavy(){
+  setSave('načítám stavy…');
+  try{
+    const { data, error } = await sb.from('stavy').select('dum,stav,pozn,kdo,kdy');
+    if(error) throw error;
+    stav={};
+    for(const row of data){
+      stav[row.dum]={ stav:row.stav, pozn:row.pozn, kdo:row.kdo, kdy:row.kdy };
+    }
+    render();
+    setSave('—');
+  }catch(e){
+    setSave('stavy offline');
+  }
+}
+
+function subscribeRealtime(){
+  sb.channel('stavy-live')
+    .on('postgres_changes',{ event:'*', schema:'public', table:'stavy' }, payload=>{
+      const t=payload.eventType;
+      if(t==='DELETE'){
+        const k=payload.old && payload.old.dum;
+        if(k){ delete stav[k]; render(); }
+      }else{
+        const r=payload.new;
+        if(r){ stav[r.dum]={ stav:r.stav, pozn:r.pozn, kdo:r.kdo, kdy:r.kdy }; render(); }
+      }
+    })
+    .subscribe();
+}
+
+/* ============================================================
+   GEOLOKACE (beze změny oproti původní appce)
+   ============================================================ */
+let meMarker=null, meAccuracy=null, meTimer=null;
+function clearMe(){
+  if(meTimer){ clearTimeout(meTimer); meTimer=null; }
+  if(meMarker){ map.removeLayer(meMarker); meMarker=null; }
+  if(meAccuracy){ map.removeLayer(meAccuracy); meAccuracy=null; }
+}
+document.getElementById('gps').onclick=()=>{
+  if(!map) return;
+  if(!navigator.geolocation){ alert('Geolokace není dostupná'); return; }
+  setSave('hledám polohu…');
+  navigator.geolocation.getCurrentPosition(p=>{
+    const {latitude,longitude,accuracy}=p.coords;
+    clearMe();
+    meAccuracy=L.circle([latitude,longitude],{radius:accuracy,color:'#3b9dff',weight:1,fillColor:'#3b9dff',fillOpacity:0.12,interactive:false}).addTo(map);
+    meMarker=L.circleMarker([latitude,longitude],{radius:8,fillColor:'#3b9dff',color:'#fff',weight:2,fillOpacity:1,interactive:false}).addTo(map);
+    map.setView([latitude,longitude],17);
+    setSave('—');
+    meTimer=setTimeout(clearMe,5000);
+  },err=>{
+    alert('Polohu se nepodařilo zjistit: '+err.message);
+  },{enableHighAccuracy:true,timeout:8000,maximumAge:5000});
+};
+</script>
+</body>
+</html>
