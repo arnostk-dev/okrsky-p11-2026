@@ -131,9 +131,6 @@ const LS_PIN   = 'pochuzka_p11_pin';     // cache PINu
 const LS_NAME  = 'pochuzka_p11_jmeno';   // cache jména
 const LS_QUEUE = 'pochuzka_p11_fronta';  // offline fronta neodeslaných zápisů
 
-// Kdo vidí filtr "Moje" (jméno přesně jak je v tabulce lidi). Ostatní jen Vše/Zbývá.
-const MOJE_PRO = ['Arnost'];
-
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   realtime:{ params:{ eventsPerSecond:5 } }
 });
@@ -221,15 +218,6 @@ function startApp(offline){
   if(started) return; started=true;
   gate.style.display='none';
   document.getElementById('who').textContent='👤 '+JMENO;
-
-  // Filtr "Moje"/"Zbývá" stojí na d.moje (Arnoštovy okrsky) — ostatním ho schováme.
-  if(!MOJE_PRO.includes(JMENO)){
-    document.querySelectorAll('#filter button[data-f="moje"], #filter button[data-f="zbyva"]').forEach(b=>b.style.display='none');
-    filter='vse';
-    document.querySelectorAll('#filter button').forEach(x=>x.classList.remove('on'));
-    const vse=document.querySelector('#filter button[data-f="vse"]');
-    if(vse) vse.classList.add('on');
-  }
 
   fetch(DATA_URL)
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
