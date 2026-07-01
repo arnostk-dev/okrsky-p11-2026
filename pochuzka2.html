@@ -58,6 +58,11 @@
   .sb-n.on{background:var(--n);color:#000;border-color:var(--n)}
   .sb-a.on{background:var(--a);color:#000;border-color:var(--a)}
   .sb-x.on{background:var(--x);color:#000;border-color:var(--x)}
+  .sb-aa.on{background:#8fb83a;color:#000;border-color:#8fb83a}
+  .stav-row2{display:flex;gap:7px;margin-bottom:9px}
+  .stav-row2 button{flex:1;justify-content:center;font-size:14px;min-height:44px;font-weight:800}
+  .sb-aa{color:#a8cc5a}
+  .sb-a1{color:var(--a)}
   .pop-pozn{display:flex;gap:6px;margin-bottom:9px}
   .pop-pozn input{flex:1;background:#0d0f12;border:1px solid var(--line);border-radius:10px;
     color:var(--text);font-family:inherit;font-size:14px;padding:9px 10px;min-width:0}
@@ -81,6 +86,18 @@
     background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;
     max-width:300px;font-size:14px;line-height:1.5;text-align:center;color:var(--dim)}
   .hint b{color:var(--text)}
+
+  /* legenda po přihlášení — zmizí klikem kamkoli */
+  .legend{position:absolute;inset:0;z-index:1500;background:rgba(13,15,18,.92);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;cursor:pointer}
+  .legend h2{color:var(--zluta);font-size:20px;font-weight:800;margin-bottom:4px}
+  .legend .sub{color:var(--dim);font-size:13px;margin-bottom:22px}
+  .legend .item{display:flex;align-items:center;gap:13px;width:100%;max-width:320px;
+    padding:11px 14px;border:1px solid var(--line);border-radius:12px;margin-bottom:9px;background:var(--panel)}
+  .legend .bul{width:18px;height:18px;border-radius:50%;flex-shrink:0;border:1px solid #000}
+  .legend .lbl{font-weight:800;font-size:16px;color:var(--text);min-width:30px}
+  .legend .desc{font-size:13px;color:var(--dim);text-align:left;line-height:1.35}
+  .legend .tap{color:var(--dim);font-size:12px;margin-top:14px}
 </style>
 </head>
 <body>
@@ -130,6 +147,9 @@ const DATA_URL     = 'domy.json';
 const LS_PIN   = 'pochuzka_p11_pin';     // cache PINu
 const LS_NAME  = 'pochuzka_p11_jmeno';   // cache jména
 const LS_QUEUE = 'pochuzka_p11_fronta';  // offline fronta neodeslaných zápisů
+
+// Kdo vidí filtr "Moje" (jméno přesně jak je v tabulce lidi). Ostatní jen Vše/Zbývá.
+const MOJE_PRO = ['Arnost'];
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   realtime:{ params:{ eventsPerSecond:5 } }
@@ -218,6 +238,16 @@ function startApp(offline){
   if(started) return; started=true;
   gate.style.display='none';
   document.getElementById('who').textContent='👤 '+JMENO;
+  showLegend();
+
+  // Filtr "Moje"/"Zbývá" stojí na d.moje (Arnoštovy okrsky) — ostatním ho schováme.
+  if(!MOJE_PRO.includes(JMENO)){
+    document.querySelectorAll('#filter button[data-f="moje"], #filter button[data-f="zbyva"]').forEach(b=>b.style.display='none');
+    filter='vse';
+    document.querySelectorAll('#filter button').forEach(x=>x.classList.remove('on'));
+    const vse=document.querySelector('#filter button[data-f="vse"]');
+    if(vse) vse.classList.add('on');
+  }
 
   fetch(DATA_URL)
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
@@ -235,6 +265,27 @@ document.getElementById('who').onclick=()=>{
   location.reload();
 };
 
+/* ---- legenda stavů po přihlášení (zmizí klikem kamkoli) ---- */
+function showLegend(){
+  const items=[
+    ['#36d07a','A','do schránek — běžně doručeno'],
+    ['#8fb83a','AA','zavřeno, ale dostali jsme se dovnitř'],
+    ['#36d07a','A1','doručeno, 1 schránka (zkratka — uloží A + poznámku „1“)'],
+    ['#3b9dff','X','stojan / nedoručeno'],
+    ['#9aa0a8','N','nedostal se dovnitř'],
+  ];
+  const rows=items.map(([c,l,d])=>
+    '<div class="item"><span class="bul" style="background:'+c+'"></span>'+
+    '<span class="lbl">'+l+'</span><span class="desc">'+d+'</span></div>'
+  ).join('');
+  const el=document.createElement('div');
+  el.className='legend';
+  el.innerHTML='<h2>Legenda stavů</h2><div class="sub">Klikni na dům a vyber stav.</div>'+
+    rows+'<div class="tap">— klikni kamkoli pro zavření —</div>';
+  el.onclick=()=>el.remove();
+  document.body.appendChild(el);
+}
+
 /* ============================================================
    MAPA + STAV
    ============================================================ */
@@ -242,7 +293,7 @@ let map, layer, markerByKey={}, filter='moje';
 // lokální zrcadlo serverového stavu: { "ok|cd|label": {stav, pozn, kdo, kdy} }
 let stav = {};
 
-const COL={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',none:'#ffffff'};
+const COL={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',AA:'#8fb83a',none:'#ffffff'};
 
 function initMap(){
   map = L.map('map',{zoomControl:false,tap:true}).setView([50.033,14.505],14);
@@ -265,18 +316,18 @@ function stOf(k){ return (stav[k]&&stav[k].stav)||''; }
 
 function visible(d){
   if(filter==='moje') return d.moje;
-  if(filter==='zbyva'){ const s=stOf(key(d)); return d.moje && s!=='A' && s!=='X'; }
+  if(filter==='zbyva'){ const s=stOf(key(d)); return d.moje && s!=='A' && s!=='X' && s!=='AA'; }
   return true;
 }
 
 function render(){
   if(!map) return;
   layer.clearLayers(); markerByKey={};
-  let n=0,a=0,x=0,tot=0;
+  let n=0,a=0,x=0,aa=0,tot=0;
   for(const d of DOMY){
     const k=key(d);
     const s=stOf(k);
-    if(d.moje){ tot++; if(s==='N')n++; else if(s==='A')a++; else if(s==='X')x++; }
+    if(d.moje){ tot++; if(s==='N')n++; else if(s==='A')a++; else if(s==='X')x++; else if(s==='AA')aa++; }
     if(!visible(d)) continue;
     const col = s? COL[s] : COL.none;
     const r = s? 6 : 4.5;
@@ -287,10 +338,10 @@ function render(){
     m.addTo(layer); markerByKey[k]=m;
   }
   document.getElementById('counts').innerHTML =
-    '<span class="chip"><span class="dot" style="background:'+COL.A+'"></span>'+a+'</span>'+
+    '<span class="chip"><span class="dot" style="background:'+COL.A+'"></span>'+(a+aa)+'</span>'+
     '<span class="chip"><span class="dot" style="background:'+COL.X+'"></span>'+x+'</span>'+
     '<span class="chip"><span class="dot" style="background:'+COL.N+'"></span>'+n+'</span>'+
-    '<span class="chip" style="color:var(--dim)">'+(a+x)+'/'+tot+'</span>';
+    '<span class="chip" style="color:var(--dim)">'+(a+aa+x)+'/'+tot+'</span>';
 }
 
 function openDom(d,m){
@@ -308,6 +359,10 @@ function openDom(d,m){
       '<button class="sb-a '+(cur==='A'?'on':'')+'" data-s="A">A</button>'+
       '<button class="sb-x '+(cur==='X'?'on':'')+'" data-s="X">X</button>'+
     '</div>'+
+    '<div class="stav-row2">'+
+      '<button class="sb-aa '+(cur==='AA'?'on':'')+'" data-s="AA">AA</button>'+
+      '<button class="sb-a1" data-a1="1">A1</button>'+
+    '</div>'+
     '<div class="pop-pozn">'+
       '<input id="poznIn" maxlength="50" placeholder="poznámka (počet schránek…)" value="'+poznVal+'">'+
       '<button class="primary" id="poznSave">OK</button>'+
@@ -318,7 +373,7 @@ function openDom(d,m){
   setTimeout(()=>{
     const pop=document.querySelector('.leaflet-popup');
     if(!pop) return;
-    pop.querySelectorAll('.stav-row button').forEach(b=>{
+    pop.querySelectorAll('.stav-row button, .stav-row2 button[data-s]').forEach(b=>{
       b.onclick=()=>{
         const v=b.getAttribute('data-s');
         const pozn=(pop.querySelector('#poznIn').value||'').trim().slice(0,50);
@@ -326,6 +381,17 @@ function openDom(d,m){
         map.closePopup(); 
       };
     });
+    const a1=pop.querySelector('[data-a1]');
+    if(a1) a1.onclick=()=>{
+      const cur=(pop.querySelector('#poznIn').value||'').trim();
+      let np;
+      if(!cur) np='1';
+      else if(cur==='1') np='1';
+      else np='1, '+cur;
+      np=np.slice(0,50);
+      setStav(d,k,'A',np);
+      map.closePopup();
+    };
     const sv=pop.querySelector('#poznSave');
     if(sv) sv.onclick=()=>{
       const pozn=(pop.querySelector('#poznIn').value||'').trim().slice(0,50);
