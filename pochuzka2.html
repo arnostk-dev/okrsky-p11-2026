@@ -494,10 +494,22 @@ setInterval(()=>{ if(started && navigator.onLine && queueGet().length) flushQueu
 async function loadStavy(){
   setSave('načítám stavy…');
   try{
-    const { data, error } = await sb.from('stavy').select('dum,stav,pozn,kdo,kdy');
-    if(error) throw error;
+    // Stránkováno po 1000 (limit PostgREST/Supabase na počet vrácených řádků na jeden dotaz).
+    // Bez tohohle appka při překročení 1000 záznamů v `stavy` tichč seřízne zbytek dat.
+    const PAGE = 1000;
+    let vsechny = [];
+    let od = 0;
+    while(true){
+      const { data, error } = await sb.from('stavy')
+        .select('dum,stav,pozn,kdo,kdy')
+        .range(od, od + PAGE - 1);
+      if(error) throw error;
+      vsechny = vsechny.concat(data);
+      if(data.length < PAGE) break; // poslední stránka
+      od += PAGE;
+    }
     stav={};
-    for(const row of data){
+    for(const row of vsechny){
       stav[row.dum]={ stav:row.stav, pozn:row.pozn, kdo:row.kdo, kdy:row.kdy };
     }
     render();
