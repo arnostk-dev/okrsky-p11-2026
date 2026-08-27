@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Pochůzka P11</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --bg:#0d0f12; --panel:#161a1f; --line:#2a2f37;
+    --zluta:#FFF84D; --text:#e8eaed; --dim:#8b929c;
+    --n:#9aa0a8;      /* nedostal se - seda */
+    --a:#36d07a;      /* do schranek - zelena */
+    --x:#3b9dff;      /* stojan - modra */
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+  #map{position:absolute;inset:0;background:#0d0f12}
+
+  /* horni listek */
+  .topbar{position:absolute;top:0;left:0;right:0;z-index:1000;
+    background:linear-gradient(180deg,rgba(13,15,18,.95),rgba(13,15,18,.0));
+    padding:10px 12px 18px;display:flex;align-items:center;gap:10px;pointer-events:none}
+  .topbar > *{pointer-events:auto}
+  .brand{font-weight:800;font-size:15px;color:var(--zluta);letter-spacing:.3px;white-space:nowrap}
+  .counts{display:flex;gap:6px;font-size:12px;font-weight:700;margin-left:auto}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:5px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  /* spodni ovladaci panel */
+  .controls{position:absolute;left:0;right:0;bottom:0;z-index:1000;
+    background:linear-gradient(0deg,rgba(13,15,18,.96),rgba(13,15,18,.0));
+    padding:24px 12px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;pointer-events:none}
+  .controls > *{pointer-events:auto}
+  button{font-family:inherit;font-weight:700;font-size:14px;border:none;border-radius:12px;
+    padding:12px 14px;background:var(--panel);color:var(--text);border:1px solid var(--line);
+    display:flex;align-items:center;gap:7px;cursor:pointer;min-height:46px}
+  button:active{transform:scale(.97)}
+  button.primary{background:var(--zluta);color:#000;border-color:var(--zluta)}
+  button.gps{background:#1b3a5c;border-color:#27517d;color:#cfe6ff}
+  .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .seg button{border:none;border-radius:0;background:transparent;min-height:44px;padding:10px 12px;font-size:13px}
+  .seg button.on{background:var(--zluta);color:#000}
+  .save-state{font-size:11px;color:var(--dim);margin-left:6px;align-self:center}
+
+  /* popup karta domu */
+  .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border-radius:14px;border:1px solid var(--line)}
+  .leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
+  .leaflet-popup-content{margin:13px 15px;min-width:210px}
+  .pop-h{font-size:17px;font-weight:800;margin-bottom:2px}
+  .pop-sub{font-size:12px;color:var(--dim);margin-bottom:11px}
+  .pop-sch{color:var(--zluta);font-weight:700}
+  .stav-row{display:flex;gap:7px;margin-bottom:9px}
+  .stav-row button{flex:1;justify-content:center;font-size:15px;min-height:50px;font-weight:800}
+  .sb-n.on{background:var(--n);color:#000;border-color:var(--n)}
+  .sb-a.on{background:var(--a);color:#000;border-color:var(--a)}
+  .sb-x.on{background:var(--x);color:#000;border-color:var(--x)}
+  .pop-clear{font-size:12px;color:var(--dim);text-align:center;cursor:pointer;padding:4px}
+
+  .hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;
+    max-width:300px;font-size:14px;line-height:1.5;text-align:center;color:var(--dim)}
+  .hint b{color:var(--text)}
+  .hint button{margin-top:14px;width:100%;justify-content:center}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="topbar">
+  <span class="brand">Pochůzka P11</span>
+  <div class="counts" id="counts"></div>
+</div>
+
+<div class="controls">
+  <div class="seg" id="filter">
+    <button data-f="moje" class="on">Moje</button>
+    <button data-f="vse">Vše</button>
+    <button data-f="zbyva">Zbývá</button>
+  </div>
+  <button class="gps" id="gps">📍 Já</button>
+  <button class="primary" id="savefile">💾 Soubor</button>
+  <span class="save-state" id="savestate">—</span>
+</div>
+
+<div class="hint" id="hint">
+  <b>Vyber datový soubor</b><br>
+  Změny stavů se budou ukládat přímo do souboru v telefonu (uvidíš ho v Total Commanderu). Funguje i offline.
+  <button class="primary" id="openfile">📂 Otevřít existující soubor</button>
+  <button class="primary" id="pickfile" style="margin-top:8px">➕ Vytvořit nový soubor</button>
+  <button id="skipfile" style="margin-top:8px;width:100%;justify-content:center;background:transparent">Zatím jen do prohlížeče</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const DATA_URL = 'domy.json';
+let DOMY = [];
+
+fetch(DATA_URL)
+  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(data=>{ DOMY = data; init(); })
+  .catch(e=>{
+    document.getElementById('hint').innerHTML =
+      '<b>Chyba načtení dat</b><br>Soubor domy.json se nepodařilo načíst ('+e.message+').<br>'+
+      'Otevři appku přes web server (GitHub Pages), ne přímo ze souboru.';
+    document.getElementById('hint').style.display='block';
+  });
+
+function init(){
+const STORAGE_KEY = 'pochuzka_p11_stav_v1';
+
+// stav: { "ulice|cd": "N"|"A"|"X" }  (cd je unikatni v ramci P11? ne -> klic ulice+cd+ok)
+let stav = {};
+let fileHandle = null;
+let filter = 'moje';
+
+function key(d){ return d.ok+'|'+d.cd+'|'+d.label; }
+
+// nacti zalohu z localStorage
+try{ const s=localStorage.getItem(STORAGE_KEY); if(s) stav=JSON.parse(s); }catch(e){}
+
+const map = L.map('map',{zoomControl:false,tap:true}).setView([50.033,14.505],14);
+L.control.zoom({position:'topright'}).addTo(map);
+const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19, attribution:'&copy; OpenStreetMap'
+}).addTo(map);
+
+const COL={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',none:'#ffffff'};
+let markers=[];
+let layer=L.layerGroup().addTo(map);
+
+function visible(d){
+  if(filter==='moje') return d.moje;
+  if(filter==='zbyva'){ const s=stav[key(d)]; return d.moje && s!=='A' && s!=='X'; }
+  return true;
+}
+
+function render(){
+  layer.clearLayers(); markers=[];
+  let n=0,a=0,x=0,tot=0;
+  for(const d of DOMY){
+    const s=stav[key(d)];
+    if(d.moje){ tot++; if(s==='N')n++; else if(s==='A')a++; else if(s==='X')x++; }
+    if(!visible(d)) continue;
+    const col = s? COL[s] : COL.none;
+    const r = s? 6 : 4.5;
+    const m=L.circleMarker([d.lat,d.lon],{
+      radius:r, fillColor:col, color:'#000', weight:1, fillOpacity:s?0.95:0.6
+    });
+    m.on('click',()=>openDom(d,m));
+    m.addTo(layer); markers.push(m);
+  }
+  document.getElementById('counts').innerHTML =
+    '<span class="chip"><span class="dot" style="background:'+COL.A+'"></span>'+a+'</span>'+
+    '<span class="chip"><span class="dot" style="background:'+COL.X+'"></span>'+x+'</span>'+
+    '<span class="chip"><span class="dot" style="background:'+COL.N+'"></span>'+n+'</span>'+
+    '<span class="chip" style="color:var(--dim)">'+(a+x)+'/'+tot+'</span>';
+}
+
+function openDom(d,m){
+  const k=key(d); const cur=stav[k]||'';
+  const sch = d.sch? ' · <span class="pop-sch">'+d.sch+' schr. zvenku</span>' : '';
+  const html =
+    '<div class="pop-h">'+d.label+'</div>'+
+    '<div class="pop-sub">'+d.ul+' · okrsek '+d.ok+sch+'</div>'+
+    '<div class="stav-row">'+
+      '<button class="sb-n '+(cur==='N'?'on':'')+'" data-s="N">N</button>'+
+      '<button class="sb-a '+(cur==='A'?'on':'')+'" data-s="A">A</button>'+
+      '<button class="sb-x '+(cur==='X'?'on':'')+'" data-s="X">X</button>'+
+    '</div>'+
+    '<div class="pop-clear" data-s="">vymazat stav</div>';
+  m.bindPopup(html,{closeButton:false,offset:[0,-4]}).openPopup();
+  setTimeout(()=>{
+    document.querySelectorAll('.leaflet-popup .stav-row button, .leaflet-popup .pop-clear').forEach(b=>{
+      b.onclick=()=>{
+        const v=b.getAttribute('data-s');
+        if(v) stav[k]=v; else delete stav[k];
+        persist(); map.closePopup(); render();
+      };
+    });
+  },30);
+}
+
+// --- ukladani ---
+async function persist(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(stav)); }catch(e){}
+  if(fileHandle){
+    try{
+      const w=await fileHandle.createWritable();
+      await w.write(JSON.stringify(stav,null,0));
+      await w.close();
+      setSave('uloženo do souboru');
+    }catch(e){ setSave('chyba zápisu – jen prohlížeč'); }
+  } else {
+    setSave('jen v prohlížeči');
+  }
+}
+function setSave(t){ document.getElementById('savestate').textContent=t; }
+
+// File System Access API
+async function pickFile(create){
+  try{
+    if(create){
+      // VYTVOŘIT NOVÝ – save dialog (může přepsat, ale je to záměr)
+      fileHandle = await window.showSaveFilePicker({
+        suggestedName:'pochuzka_p11.json',
+        types:[{description:'JSON',accept:{'application/json':['.json']}}]
+      });
+      // do nového souboru rovnou zapíšeme aktuální stav z paměti
+      await persist();
+    }else{
+      // OTEVŘÍT EXISTUJÍCÍ – open dialog (jen ČTE, nikdy nezapisuje sám od sebe)
+      const [h]=await window.showOpenFilePicker({
+        types:[{description:'JSON',accept:{'application/json':['.json']}}],
+        multiple:false
+      });
+      const f=await h.getFile();
+      const txt=await f.text();
+      let fromFile;
+      try{
+        fromFile = txt.trim() ? JSON.parse(txt) : {};
+      }catch(e){
+        alert('Soubor není platný JSON – neotevírám ho, aby se nepřepsal.');
+        return; // fileHandle ZŮSTÁVÁ null → nehrozí přepis
+      }
+      // SOUBOR je zdroj pravdy. Z paměti přidám jen klíče, které v souboru NEJSOU.
+      stav = Object.assign({}, stav, fromFile);
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(stav)); }catch(e){}
+      // handle nastavíme až TEĎ, a ZÁMĚRNĚ NEZAPISUJEME.
+      // Soubor se přepíše až při prvním reálném kliknutí na dům (persist v render/klik).
+      fileHandle = h;
+    }
+    document.getElementById('hint').style.display='none';
+    render();
+  }catch(e){ /* uzivatel zrusil dialog */ }
+}
+
+document.getElementById('openfile').onclick=()=>pickFile(false);
+document.getElementById('pickfile').onclick=()=>pickFile(true);
+document.getElementById('skipfile').onclick=()=>{
+  document.getElementById('hint').style.display='none'; setSave('jen v prohlížeči'); render();
+};
+document.getElementById('savefile').onclick=async ()=>{
+  if(!fileHandle){ document.getElementById('hint').style.display='block'; }
+  else { await persist(); }
+};
+
+// filtr
+document.querySelectorAll('#filter button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#filter button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); filter=b.getAttribute('data-f'); render();
+  };
+});
+
+// geolokace
+let meMarker=null, meAccuracy=null, meTimer=null;
+function clearMe(){
+  if(meTimer){ clearTimeout(meTimer); meTimer=null; }
+  if(meMarker){ map.removeLayer(meMarker); meMarker=null; }
+  if(meAccuracy){ map.removeLayer(meAccuracy); meAccuracy=null; }
+}
+document.getElementById('gps').onclick=()=>{
+  if(!navigator.geolocation){ alert('Geolokace není dostupná'); return; }
+  setSave('hledám polohu…');
+  navigator.geolocation.getCurrentPosition(p=>{
+    const {latitude,longitude,accuracy}=p.coords;
+    clearMe();
+    meAccuracy=L.circle([latitude,longitude],{radius:accuracy,color:'#3b9dff',weight:1,fillColor:'#3b9dff',fillOpacity:0.12,interactive:false}).addTo(map);
+    meMarker=L.circleMarker([latitude,longitude],{radius:8,fillColor:'#3b9dff',color:'#fff',weight:2,fillOpacity:1,interactive:false}).addTo(map);
+    map.setView([latitude,longitude],17);
+    setSave(fileHandle?'uloženo do souboru':'jen v prohlížeči');
+    meTimer=setTimeout(clearMe,5000);
+  },err=>{
+    alert('Polohu se nepodařilo zjistit: '+err.message);
+  },{enableHighAccuracy:true,timeout:8000,maximumAge:5000});
+};
+
+// pokud File System API neni (napr. iOS), schovej nabidku souboru
+if(!window.showSaveFilePicker){
+  document.getElementById('savefile').textContent='💾 Export';
+  document.getElementById('savefile').onclick=()=>{
+    const blob=new Blob([JSON.stringify(stav,null,0)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='pochuzka_p11.json'; a.click();
+  };
+  document.getElementById('pickfile').textContent='Pokračovat';
+  document.getElementById('openfile').style.display='none';
+  document.getElementById('pickfile').onclick=()=>{
+    document.getElementById('hint').style.display='none'; render();
+  };
+}
+
+render();
+}
+</script>
+</body>
+</html>
