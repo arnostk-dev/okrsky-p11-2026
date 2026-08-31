@@ -67,6 +67,9 @@
   .pop-pozn input{flex:1;background:#0d0f12;border:1px solid var(--line);border-radius:10px;
     color:var(--text);font-family:inherit;font-size:14px;padding:9px 10px;min-width:0}
   .pop-pozn button{padding:9px 12px;min-height:0}
+  .pop-grp{font-size:12px;color:var(--zluta);background:#0d0f12;border:1px solid var(--line);
+    border-radius:9px;padding:6px 9px;margin-bottom:10px;line-height:1.45}
+  .pop-grp span{display:block;color:var(--dim);font-size:11px}
   .pop-meta{font-size:11px;color:var(--dim);margin-bottom:8px;min-height:14px}
   .pop-clear{font-size:12px;color:var(--dim);text-align:center;cursor:pointer;padding:4px}
 
@@ -159,8 +162,17 @@ let DOMY = [];
 let PIN  = null;
 let JMENO = null;
 
-/* ---- klíč domu: třídílný ok|cd|label (ok|cd není unikátní!) ---- */
-function key(d){ return d.ok+'|'+String(d.cd)+'|'+d.label; }
+/* ---- klíč domu: čtyřdílný ulice|okrsek|čp|label ----
+   Bez ulice klíč není unikátní — např. Horynova 2429/2 a Líbalova 2429/2
+   jsou dva různé vchody, které by si stav přepisovaly. ---- */
+function key(d){ return d.ul+'|'+d.ok+'|'+String(d.cd)+'|'+d.label; }
+
+/* ---- skupiny: dům s adresou do dvou ulic ----
+   Na mapě zůstanou oba body spojené čárkou, ale je to jedna schránka:
+   klik na kterýkoli z nich zapíše stav všem adresám skupiny a do statistiky
+   se počítá jen hlavní adresa. Zdroj je pole grp/hl v domy.json. ---- */
+let SKUPINY = {};                                  // grp -> [dům, …]
+function clenove(d){ return d.grp ? (SKUPINY[d.grp] || [d]) : [d]; }
 
 /* ============================================================
    PIN GATE
@@ -251,7 +263,12 @@ function startApp(offline){
 
   fetch(DATA_URL)
     .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(data=>{ DOMY=data; initMap(); loadStavy(); subscribeRealtime(); flushQueue(); })
+    .then(data=>{
+      DOMY=data;
+      SKUPINY={};
+      for(const d of DOMY) if(d.grp) (SKUPINY[d.grp]=SKUPINY[d.grp]||[]).push(d);
+      initMap(); loadStavy(); subscribeRealtime(); flushQueue();
+    })
     .catch(e=>{
       document.body.insertAdjacentHTML('beforeend',
         '<div class="hint"><b>Chyba načtení dat</b><br>domy.json se nepodařilo načíst ('+e.message+').<br>'+
@@ -281,7 +298,11 @@ function showLegend(){
   const el=document.createElement('div');
   el.className='legend';
   el.innerHTML='<h2>Legenda stavů</h2><div class="sub">Klikni na dům a vyber stav.</div>'+
-    rows+'<div class="tap">— klikni kamkoli pro zavření —</div>';
+    rows+
+    '<div class="desc" style="max-width:320px;text-align:left;margin-top:6px">'+
+    '<b style="color:var(--text)">Dva body spojené černou čárkou</b> = jeden dům s adresou do dvou ulic. '+
+    'Stačí označit jeden, druhý se přepíše sám.</div>'+
+    '<div class="tap">— klikni kamkoli pro zavření —</div>';
   el.onclick=()=>el.remove();
   document.body.appendChild(el);
 }
@@ -290,7 +311,7 @@ function showLegend(){
    MAPA + STAV
    ============================================================ */
 let map, layer, markerByKey={}, filter='moje';
-// lokální zrcadlo serverového stavu: { "ok|cd|label": {stav, pozn, kdo, kdy} }
+// lokální zrcadlo serverového stavu: { "ulice|ok|cd|label": {stav, pozn, kdo, kdy} }
 let stav = {};
 
 const COL={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',AA:'#8fb83a',none:'#ffffff'};
@@ -323,11 +344,23 @@ function visible(d){
 function render(){
   if(!map) return;
   layer.clearLayers(); markerByKey={};
+
+  // spojnice u domů s adresou do dvou ulic (kreslí se pod body)
+  for(const g in SKUPINY){
+    const cl=SKUPINY[g];
+    if(!cl.some(visible)) continue;
+    const h=cl.find(y=>y.hl)||cl[0];
+    for(const m of cl) if(m!==h)
+      L.polyline([[h.lat,h.lon],[m.lat,m.lon]],
+        {color:'#000',weight:2,opacity:.75,interactive:false}).addTo(layer);
+  }
+
   let n=0,a=0,x=0,aa=0,tot=0;
   for(const d of DOMY){
     const k=key(d);
     const s=stOf(k);
-    if(d.moje){ tot++; if(s==='N')n++; else if(s==='A')a++; else if(s==='X')x++; else if(s==='AA')aa++; }
+    // do statistiky se skupina počítá jen jednou — za hlavní adresu
+    if(d.moje && (!d.grp || d.hl)){ tot++; if(s==='N')n++; else if(s==='A')a++; else if(s==='X')x++; else if(s==='AA')aa++; }
     if(!visible(d)) continue;
     const col = s? COL[s] : COL.none;
     const r = s? 6 : 4.5;
@@ -351,9 +384,15 @@ function openDom(d,m){
   const sch = d.sch? ' · <span class="pop-sch">'+d.sch+' schr. zvenku</span>' : '';
   const meta = rec.kdo? (rec.kdo+(rec.kdy?' · '+fmtKdy(rec.kdy):'')) : '';
   const poznVal = (rec.pozn||'').replace(/"/g,'&quot;');
+  const cl = clenove(d);
+  const grpInfo = cl.length>1
+    ? '<div class="pop-grp">též '+cl.filter(y=>y!==d).map(y=>y.ul+' '+y.label).join(' · ')+
+      '<span>jeden dům, zapíše se na '+cl.length+' adresy</span></div>'
+    : '';
   const html =
     '<div class="pop-h">'+d.label+'</div>'+
     '<div class="pop-sub">'+d.ul+' · okrsek '+d.ok+sch+'</div>'+
+    grpInfo+
     '<div class="stav-row">'+
       '<button class="sb-n '+(cur==='N'?'on':'')+'" data-s="N">N</button>'+
       '<button class="sb-a '+(cur==='A'?'on':'')+'" data-s="A">A</button>'+
@@ -414,22 +453,30 @@ function fmtKdy(iso){
 /* ============================================================
    ZÁPIS / MAZÁNÍ — přes Supabase RPC, s offline frontou
    ============================================================ */
+// Zapisuje se na VŠECHNY adresy skupiny — dům s adresou do dvou ulic
+// má jednu schránku, ale v datech dva klíče.
 function setStav(d,k,stavVal,poznVal){
-  // optimistický zápis do lokálního zrcadla
-  const prev = stav[k] || {};
-  stav[k] = {
-    stav: stavVal!==null ? stavVal : (prev.stav||null),
-    pozn: poznVal!==null ? poznVal : (prev.pozn||null),
-    kdo: JMENO, kdy: new Date().toISOString()
-  };
+  const ted = new Date().toISOString();
+  for(const m of clenove(d)){
+    const mk = key(m);
+    const prev = stav[mk] || {};
+    stav[mk] = {                       // optimistický zápis do lokálního zrcadla
+      stav: stavVal!==null ? stavVal : (prev.stav||null),
+      pozn: poznVal!==null ? poznVal : (prev.pozn||null),
+      kdo: JMENO, kdy: ted
+    };
+    sendZapis({ dum:mk, stav:stavVal, pozn:poznVal });
+  }
   render();
-  sendZapis({ dum:k, stav:stavVal, pozn:poznVal });
 }
 
 function clearStav(d,k){
-  delete stav[k];
+  for(const m of clenove(d)){
+    const mk = key(m);
+    delete stav[mk];
+    sendSmaz({ dum:mk });
+  }
   render();
-  sendSmaz({ dum:k });
 }
 
 async function sendZapis(op){
