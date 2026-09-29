@@ -322,14 +322,26 @@ function showLegend(){
   const r2=obrysy.map(([c,l,d])=>
     '<div class="item"><span class="bul" style="background:transparent;border-color:'+c+'"></span>'+
     '<span class="lbl">'+l+'</span><span class="desc">'+d+'</span></div>').join('');
+  const sily=[
+    [1.5,'do 10','rodinný dům, pár schránek'],
+    [2.5,'10 až 40','menší dům'],
+    [4,'40 až 80','panelák'],
+    [5.5,'nad 80','velký panelák, vyplatí se domluvit vstup'],
+  ];
+  const r3=sily.map(([w,l,d])=>
+    '<div class="item"><span class="bul" style="background:transparent;border:'+w*1.6+'px solid var(--dim)"></span>'+
+    '<span class="lbl" style="font-size:13px">'+l+'</span><span class="desc">'+d+'</span></div>').join('');
   const el=document.createElement('div');
   el.className='legend';
-  el.innerHTML='<h2>Legenda</h2><div class="sub">Výplň bodu je letošní stav, obrys je to, co víme z prvního kola.</div>'+
+  el.innerHTML='<h2>Legenda</h2><div class="sub">Výplň bodu je letošní stav, barva obrysu je to, co víme z prvního kola, '+
+    'a síla obrysu říká, kolik je v domě schránek.</div>'+
     '<div class="grp-h">Výplň: letošní stav</div>'+r1+
-    '<div class="grp-h">Obrys: co bylo v 1. kole</div>'+r2+
+    '<div class="grp-h">Barva obrysu: co bylo v 1. kole</div>'+r2+
+    '<div class="grp-h">Síla obrysu: kolik schránek</div>'+r3+
     '<div class="grp-h">Ostatní značky</div>'+
     '<div class="item"><span class="bul" style="background:#FFF84D;border-color:#000"></span>'+
-      '<span class="lbl">☝</span><span class="desc">žlutá svatozář = dům je rezervovaný, v popupu je čí</span></div>'+
+      '<span class="lbl">R</span><span class="desc">žlutý vnitřek = dům je rezervovaný a ještě nemá letošní stav '+
+      '(sytě moje rezervace, bledě cizí, čí je, říká popup)</span></div>'+
     '<div class="item"><span class="bul" style="background:transparent;border-color:transparent">★</span>'+
       '<span class="lbl"></span><span class="desc">hvězdička = v domě máme příznivce</span></div>'+
     '<div class="item"><span class="bul" style="background:transparent;border-color:var(--line)"></span>'+
@@ -345,8 +357,19 @@ function showLegend(){
    ============================================================ */
 let map, layer, layerZnacky, markerByKey={}, filter='moje';
 
-const VYPLN={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',AA:'#8fb83a',none:'#ffffff',NN:'#4a4f57'};
+const VYPLN={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',AA:'#8fb83a',none:'#ffffff',NN:'#4a4f57',R:'#FFF84D'};
 const OBRYS={A:'#5a6068',AA:'#b14ad6',X:'#ff4d4d',N:'#ff9f40',none:'#ffffff'};
+
+/* Počet schránek nese SÍLA vnějšího kroužku, ne velikost bodu.
+   Meze 10 / 40 / 80: rodinný dům, menší bytovka, panelák, velký panelák. */
+const SCH_MEZE = [10,40,80];
+const SCH_SILA = [1.5,2.5,4,5.5];
+function silaObrysu(n){
+  if(!n) return 1.5;                       // počet neznáme, nejtenčí
+  let i=0; while(i<SCH_MEZE.length && n>=SCH_MEZE[i]) i++;
+  return SCH_SILA[i];
+}
+const R_BOD = 7, R_NN = 4.5;
 
 function initMap(){
   map = L.map('map',{zoomControl:false,tap:true}).setView([50.033,14.505],14);
@@ -443,22 +466,16 @@ function render(){
 
     const nnD = jeNN(d);
     const sch = schranek(d).n;
-    const r = nnD ? 4 : Math.max(4.5, Math.min(11, 4.5 + Math.sqrt(sch||1)*0.8));
+    // Rezervace = žlutý vnitřek, ale jen dokud dům nemá letošní stav.
+    // Jakmile stav má, vyhrává stav a rezervace se řeší v popupu.
+    const zluta = !s && !!rezOf(k);
     const m=L.circleMarker([d.lat,d.lon],{
-      radius:r,
-      fillColor: nnD ? VYPLN.NN : (s? VYPLN[s] : VYPLN.none),
+      radius: nnD ? R_NN : R_BOD,
+      fillColor: nnD ? VYPLN.NN : (s ? VYPLN[s] : (zluta ? VYPLN.R : VYPLN.none)),
       color: nnD ? '#000' : (OBRYS[k1Of(k)] || OBRYS.none),
-      weight: nnD ? 1 : 2.5,
-      fillOpacity: nnD ? .55 : (s?0.95:0.45)
+      weight: nnD ? 1 : silaObrysu(sch),
+      fillOpacity: nnD ? .55 : (s ? 0.95 : (zluta ? (mojeRez(k)?0.95:0.5) : 0.35))
     });
-
-    // rezervace = žlutá svatozář pod bodem
-    if(rezOf(k)){
-      L.circleMarker([d.lat,d.lon],{
-        radius:r+5, fillColor:'#FFF84D', color:'#FFF84D', weight:1,
-        fillOpacity: mojeRez(k)?0.42:0.20, opacity:mojeRez(k)?0.9:0.45, interactive:false
-      }).addTo(layer);
-    }
     m.on('click',()=>openDom(d,m));
     m.addTo(layer); markerByKey[k]=m;
 
@@ -526,7 +543,9 @@ function openDom(d,m){
   rezHtml += '<div class="radek-btn">';
   if(rkdo===JMENO) rezHtml += '<button id="rezOff">Uvolnit</button>';
   else rezHtml += '<button class="btn-rez" id="rezOn">'+(rkdo?'Vzít si':'Rezervovat')+'</button>';
-  rezHtml += '<button id="rezUlice">Celá ulice</button></div></div>';
+  rezHtml += '</div><div class="radek-btn" style="margin-top:6px">'+
+    '<button id="rezUlice">Celá ulice</button>'+
+    '<button id="rezOkrsek">Celý okrsek '+d.ok+'</button></div></div>';
 
   /* typ objektu */
   const t=typOf(d);
@@ -612,16 +631,13 @@ function openDom(d,m){
     const rOff=pop.querySelector('#rezOff');
     if(rOff) rOff.onclick=()=>{ zrusRez(clenove(d).map(key)); map.closePopup(); };
     const rUl=pop.querySelector('#rezUlice');
-    if(rUl) rUl.onclick=()=>{
-      // Dům s adresou do dvou ulic se rezervuje celý, i když druhá adresa
-      // patří do jiné ulice nebo okrsku. Jinak by zůstala půlka domu volná.
-      const vybrane=DOMY.filter(y=>y.ul===d.ul && y.ok===d.ok && !jeNN(y));
-      const dumy=[...new Set(vybrane.flatMap(y=>clenove(y).map(key)))];
-      const navic=dumy.length-vybrane.length;
-      if(!confirm('Rezervovat '+d.ul+' v okrsku '+d.ok+'? To je '+vybrane.length+' adres'+
-                  (navic>0? ' plus '+navic+' druhých adres sloučených domů':'')+'.')) return;
-      rezervuj(dumy); map.closePopup();
-    };
+    if(rUl) rUl.onclick=()=>hromadne(
+      DOMY.filter(y=>y.ul===d.ul && y.ok===d.ok),
+      d.ul+' v okrsku '+d.ok);
+    const rOk=pop.querySelector('#rezOkrsek');
+    if(rOk) rOk.onclick=()=>hromadne(
+      DOMY.filter(y=>y.ok===d.ok),
+      'celý okrsek '+d.ok);
 
     const tNN=pop.querySelector('#typNN');
     if(tNN) tNN.onclick=()=>{ setTyp(d,k,'NN'); map.closePopup(); };
@@ -714,6 +730,27 @@ async function sendSmaz(op){
 /* ============================================================
    REZERVACE
    ============================================================ */
+/* Hromadná rezervace ulice nebo okrsku. Nebytové domy vynechá,
+   dům s adresou do dvou ulic vezme celý (i tu druhou adresu jinde),
+   a dopředu řekne, do čeho se to počítá. */
+function hromadne(vyber, popis){
+  const vybrane = vyber.filter(y=>!jeNN(y));
+  const dumy = [...new Set(vybrane.flatMap(y=>clenove(y).map(key)))];
+  if(!dumy.length){ alert('V '+popis+' není co rezervovat.'); return; }
+
+  const hotovych = vybrane.filter(y=>['A','AA'].includes(stOf(key(y)))).length;
+  const cizich   = vybrane.filter(y=>{ const r=rezOf(key(y)); return r && r!==JMENO; }).length;
+  const navic    = dumy.length - vybrane.length;
+
+  let t = 'Rezervovat '+popis+'?\n\n'+vybrane.length+' adres';
+  if(navic>0)     t += ' plus '+navic+' druhých adres sloučených domů';
+  t += '.';
+  if(cizich)      t += '\nZ toho '+cizich+' má rezervovaný někdo jiný, ty si převezmeš.';
+  if(hotovych)    t += '\n'+hotovych+' už je hotových (A/AA), ty zůstanou tak, jak jsou.';
+  if(!confirm(t)) return;
+  rezervuj(dumy); map.closePopup();
+}
+
 async function rezervuj(dumy){
   setSave('rezervuju…');
   // optimisticky
