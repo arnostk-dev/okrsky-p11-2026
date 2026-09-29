@@ -52,6 +52,9 @@
   .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border-radius:14px;border:1px solid var(--line)}
   .leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
   .leaflet-popup-content{margin:13px 15px;min-width:230px;max-height:70vh;overflow-y:auto}
+  .leaflet-popup-close-button{color:var(--dim)!important;font-size:22px!important;
+    width:30px!important;height:30px!important;padding:4px 6px 0 0!important}
+  .leaflet-popup-close-button:hover{color:var(--text)!important}
   .pop-h{font-size:17px;font-weight:800;margin-bottom:2px}
   .pop-sub{font-size:12px;color:var(--dim);margin-bottom:10px}
   .pop-sch{color:var(--zluta);font-weight:700}
@@ -376,6 +379,10 @@ function showLegend(){
    MAPA
    ============================================================ */
 let map, layer, layerZnacky, markerByKey={}, filter='moje';
+/* Když je otevřený popup domu, mapu nepřekreslujeme. Překreslení totiž
+   zahodí i marker, na kterém popup visí, a ten se pak sám zavře, i když
+   se člověk ničeho nedotkl (stačila změna od kolegy nebo obnovení dat). */
+let otevrenyKlic=null, renderOdlozen=false;
 
 const VYPLN={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',AA:'#8fb83a',none:'#ffffff',NN:'#4a4f57',R:'#FFF84D'};
 /* U minulých stavů mají X a N jednu barvu: v obou případech se do schránek v domě nedostalo. */
@@ -401,8 +408,16 @@ function initMap(){
   layer=L.layerGroup().addTo(map);
   layerZnacky=L.layerGroup().addTo(map);
 
+  map.on('popupclose',()=>{
+    otevrenyKlic=null;
+    if(renderOdlozen){ renderOdlozen=false; render(); }   // dohnat, co se mezitím změnilo
+  });
+
   document.querySelectorAll('#filter button').forEach(b=>{
     b.onclick=()=>{
+      // otevřený popup blokuje překreslení, takže ho přepnutí filtru zavře
+      if(map) map.closePopup();
+      otevrenyKlic=null; renderOdlozen=false;
       document.querySelectorAll('#filter button').forEach(x=>x.classList.remove('on'));
       b.classList.add('on'); filter=b.getAttribute('data-f'); render();
     };
@@ -463,6 +478,7 @@ function visible(d){
 
 function render(){
   if(!map) return;
+  if(otevrenyKlic){ renderOdlozen=true; return; }   // popup má přednost, dokreslíme po zavření
   layer.clearLayers(); layerZnacky.clearLayers(); markerByKey={};
 
   for(const g in SKUPINY){
@@ -639,7 +655,15 @@ function openDom(d,m){
     '<div class="pop-clear" data-s="">vymazat stav</div>'+
     rezHtml + typHtml + przHtml;
 
-  m.bindPopup(html,{closeButton:false,offset:[0,-4],maxWidth:320}).openPopup();
+  /* Popup zůstane otevřený, dokud ho člověk nezavře křížkem nebo neklikne na jiný
+     dům. Dřív ho zavřel i náhodný dotek do mapy, což při chůzi otravovalo. */
+  m.bindPopup(html,{
+    closeButton:true,      // křížek, aby bylo čím zavřít
+    closeOnClick:false,    // dotek do mapy popup nezavře
+    autoClose:false,       // ani otevření jiného popupu ho nezhasne samo
+    offset:[0,-4], maxWidth:320
+  }).openPopup();
+  otevrenyKlic=k;
 
   setTimeout(()=>{
     const pop=document.querySelector('.leaflet-popup');
@@ -1069,7 +1093,7 @@ document.getElementById('gps').onclick=()=>{
       weight:2,fillOpacity:1,interactive:false}).addTo(map);
     map.setView([latitude,longitude],17);
     setSave('—');
-    meTimer=setTimeout(clearMe,5000);
+    meTimer=setTimeout(clearMe,10000);   // poloha zůstane 10 sekund
   },err=>{ alert('Polohu se nepodařilo zjistit: '+err.message); },
   {enableHighAccuracy:true,timeout:8000,maximumAge:5000});
 };
