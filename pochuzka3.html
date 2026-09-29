@@ -799,23 +799,32 @@ async function zrusRez(dumy){
 /* ============================================================
    TYP OBJEKTU (NN / BYT)
    ============================================================ */
+/* Typ objektu je vlastnost domu, ne adresy, takže u domu s adresou do dvou
+   ulic se zapisuje na všechny jeho adresy, stejně jako stav a rezervace. */
 async function setTyp(d,k,typ){
-  typy[k]={typ:typ, kdo:JMENO};
+  for(const m of clenove(d)) typy[key(m)]={typ:typ, kdo:JMENO};
   render();
   setSave('ukládám…');
-  try{
-    const { error } = await sb.rpc('zapis_typ',{ p_pin:PIN, p_dum:k, p_typ:typ });
-    if(error) throw error;
-    setSave('uloženo');
-  }catch(e){ queuePush({typ:'typ', dum:k, hodnota:typ}); setSave('offline – ve frontě'); }
+  for(const m of clenove(d)){
+    const mk=key(m);
+    try{
+      const { error } = await sb.rpc('zapis_typ',{ p_pin:PIN, p_dum:mk, p_typ:typ });
+      if(error) throw error;
+      setSave('uloženo');
+    }catch(e){ queuePush({typ:'typ', dum:mk, hodnota:typ}); setSave('offline – ve frontě'); }
+  }
 }
 async function clearTyp(d,k){
-  delete typy[k]; render();
-  try{
-    const { error } = await sb.rpc('smaz_typ',{ p_pin:PIN, p_dum:k });
-    if(error) throw error;
-    setSave('zrušeno');
-  }catch(e){ queuePush({typ:'typSmaz', dum:k}); setSave('offline – ve frontě'); }
+  for(const m of clenove(d)) delete typy[key(m)];
+  render();
+  for(const m of clenove(d)){
+    const mk=key(m);
+    try{
+      const { error } = await sb.rpc('smaz_typ',{ p_pin:PIN, p_dum:mk });
+      if(error) throw error;
+      setSave('zrušeno');
+    }catch(e){ queuePush({typ:'typSmaz', dum:mk}); setSave('offline – ve frontě'); }
+  }
 }
 
 /* ============================================================
