@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Správa roznašečů — Pochůzka P11</title>
+<style>
+  :root{
+    --bg:#0d0f12; --panel:#161a1f; --line:#2a2f37;
+    --zluta:#FFF84D; --text:#e8eaed; --dim:#8b929c; --cerv:#ff6b6b; --zel:#36d07a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:18px 14px 60px;line-height:1.45}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{font-size:19px;color:var(--zluta);font-weight:800;margin-bottom:3px}
+  .pod{font-size:12.5px;color:var(--dim);margin-bottom:18px}
+  .varovani{background:#2a1f10;border:1px solid #5c4420;border-radius:10px;padding:9px 11px;
+    font-size:12.5px;color:#ffd9a0;margin-bottom:16px}
+
+  /* PIN gate */
+  .gate{max-width:360px;margin:12vh auto;text-align:center}
+  .gate h1{margin-bottom:6px}
+  .gate p{color:var(--dim);font-size:13px;margin-bottom:16px}
+  .pin-box{display:flex;gap:6px;justify-content:center}
+  .pin-box input{width:44px;height:58px;text-align:center;font-size:24px;font-weight:800;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--text);padding:0}
+  .pin-box input:focus{outline:none;border-color:var(--zluta)}
+  .err{color:var(--cerv);font-size:13px;font-weight:700;min-height:20px;margin-top:10px}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--dim);
+    padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:5px 8px;border-bottom:1px solid #1e2228;vertical-align:middle}
+  tr.zmeneno td{background:#1b2016}
+  input[type=text]{background:#0d0f12;border:1px solid var(--line);border-radius:8px;color:var(--text);
+    font-family:inherit;font-size:13.5px;padding:7px 8px;width:100%;min-width:0}
+  input.pin{font-variant-numeric:tabular-nums;letter-spacing:1px;max-width:94px}
+  input:focus{outline:none;border-color:var(--zluta)}
+  .cislo{color:var(--dim);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  button{font-family:inherit;font-weight:700;font-size:13px;border:1px solid var(--line);border-radius:9px;
+    padding:7px 11px;background:var(--panel);color:var(--text);cursor:pointer;white-space:nowrap}
+  button:hover{border-color:#3b424d}
+  button.ulozit{background:var(--zluta);color:#000;border-color:var(--zluta)}
+  button.smazat{color:var(--cerv)}
+  button:disabled{opacity:.35;cursor:default}
+  .akce{display:flex;gap:6px;justify-content:flex-end}
+  .spravce-pr{cursor:pointer;font-size:16px;text-align:center;user-select:none}
+  .lista{display:flex;gap:9px;align-items:center;margin:16px 0 10px;flex-wrap:wrap}
+  .lista .stav{font-size:12px;color:var(--dim);margin-left:auto}
+  .novy{margin-top:18px;border:1px dashed var(--line);border-radius:12px;padding:12px}
+  .novy h2{font-size:13px;color:var(--zluta);margin-bottom:9px;font-weight:800}
+  .novy .radek{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .novy .radek input{flex:1;min-width:130px}
+  .pozn{font-size:11.5px;color:var(--dim);margin-top:10px}
+  @media (max-width:640px){
+    th.skryt, td.skryt{display:none}
+    table{font-size:13px}
+  }
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <h1>Správa roznašečů</h1>
+  <p>Jen pro správce. Zadej svůj 6místný PIN.</p>
+  <div class="pin-box" id="pinbox">
+    <input type="tel" inputmode="numeric" maxlength="1">
+    <input type="tel" inputmode="numeric" maxlength="1">
+    <input type="tel" inputmode="numeric" maxlength="1">
+    <input type="tel" inputmode="numeric" maxlength="1">
+    <input type="tel" inputmode="numeric" maxlength="1">
+    <input type="tel" inputmode="numeric" maxlength="1">
+  </div>
+  <div class="err" id="pinerr"></div>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+  <h1>Správa roznašečů</h1>
+  <div class="pod">Pochůzka P11, 2. kolo. Přihlášen <b id="kdo"></b>. <span id="odhlasit"
+    style="color:var(--dim);cursor:pointer;text-decoration:underline">odhlásit</span></div>
+
+  <div class="varovani">Tahle stránka zobrazuje PINy všech lidí, tedy přístup do databáze kampaně.
+    Nenechávej ji otevřenou na cizím počítači a nedávej ji nikomu přes rameno.</div>
+
+  <div class="lista">
+    <button id="pridat">+ nový člověk</button>
+    <button id="csv">Stáhnout CSV</button>
+    <button id="obnovit">Obnovit ze serveru</button>
+    <span class="stav" id="stav"></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Jméno</th>
+        <th>PIN</th>
+        <th>Mail</th>
+        <th class="cislo skryt">Zápisů</th>
+        <th class="cislo skryt">Rezervací</th>
+        <th style="text-align:center">Správce</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="telo"></tbody>
+  </table>
+
+  <div class="novy" id="novyBlok" style="display:none">
+    <h2>Nový člověk</h2>
+    <div class="radek">
+      <input type="text" id="nJmeno" placeholder="jméno a příjmení">
+      <input type="text" id="nPin" class="pin" placeholder="PIN" inputmode="numeric" maxlength="6">
+      <input type="text" id="nMail" placeholder="mail (nepovinný)">
+      <button class="ulozit" id="nUlozit">Přidat</button>
+      <button id="nZrusit">Zrušit</button>
+    </div>
+    <div class="pozn">PIN musí být 6 číslic a nesmí ho mít nikdo jiný. Tlačítko „Náhodný" vygeneruje volný PIN.
+      <span id="nahodny" style="color:var(--zluta);cursor:pointer;text-decoration:underline">Náhodný</span></div>
+  </div>
+
+  <div class="pozn">
+    Změna PINu jméno nemění, takže zápisy stavů a rezervace zůstanou u toho člověka.
+    Smazání člověka jeho zápisy nemaže (nesou jméno, ne PIN), jen se zeptá, jestli uvolnit jeho rezervace.
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* Sprava roznaseecu pro 2. kolo. Vsechno jde pres RPC, ktere na serveru
+   overi priznak spravce v lidi2. Tabulka lidi2 sama je pres REST necitelna. */
+const SUPABASE_URL = 'https://subqgsfbgqbtvntjydoz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_VfAWVaGLsFN7H-cZSENGHA_fviIkJD1';
+const LS_PIN  = 'sprava_p11_pin';
+const PIN_DELKA = 6;
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let PIN=null, JMENO=null, LIDI=[];
+
+/* ---------- PIN gate ---------- */
+const pinInputs=[...document.querySelectorAll('#pinbox input')];
+const pinErr=document.getElementById('pinerr');
+pinInputs.forEach((inp,i)=>{
+  inp.addEventListener('input',()=>{
+    inp.value=inp.value.replace(/\D/g,'');
+    if(inp.value && i<pinInputs.length-1) pinInputs[i+1].focus();
+    if(pinInputs.every(x=>x.value)) prihlas();
+  });
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Backspace' && !inp.value && i>0){ pinInputs[i-1].focus(); pinInputs[i-1].value=''; }
+  });
+});
+function cistiPin(){ pinInputs.forEach(i=>{i.value='';i.disabled=false;}); pinInputs[0].focus(); }
+
+async function prihlas(){
+  const pin=pinInputs.map(i=>i.value).join('');
+  if(pin.length!==PIN_DELKA) return;
+  pinErr.textContent=''; pinInputs.forEach(i=>i.disabled=true);
+  try{
+    const { data:jmeno, error:e1 } = await sb.rpc('over_pin2',{ p_pin:pin });
+    if(e1) throw e1;
+    if(!jmeno){ pinErr.textContent='Neplatný PIN'; cistiPin(); return; }
+    const { data:spravce, error:e2 } = await sb.rpc('je_spravce',{ p_pin:pin });
+    if(e2) throw e2;
+    if(!spravce){ pinErr.textContent=jmeno+', tahle stránka je jen pro správce.'; cistiPin(); return; }
+    PIN=pin; JMENO=jmeno;
+    try{ localStorage.setItem(LS_PIN,pin); }catch(e){}
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('kdo').textContent=JMENO;
+    nacti();
+  }catch(err){
+    pinErr.textContent='Nepodařilo se spojit se serverem: '+(err.message||err);
+    cistiPin();
+  }
+}
+(function auto(){
+  try{
+    const p=localStorage.getItem(LS_PIN);
+    if(p && p.length===PIN_DELKA){ pinInputs.forEach((inp,i)=>inp.value=p[i]); prihlas(); }
+    else pinInputs[0].focus();
+  }catch(e){ pinInputs[0].focus(); }
+})();
+document.getElementById('odhlasit').onclick=()=>{
+  try{ localStorage.removeItem(LS_PIN); }catch(e){}
+  location.reload();
+};
+
+/* ---------- seznam ---------- */
+function stav(t){ document.getElementById('stav').textContent=t||''; }
+function esc(s){ return (s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+
+async function nacti(){
+  stav('načítám…');
+  try{
+    const { data, error } = await sb.rpc('lidi_seznam',{ p_pin:PIN });
+    if(error) throw error;
+    LIDI=data||[];
+    kresli();
+    stav(LIDI.length+' lidí, '+LIDI.filter(l=>l.mail).length+' s mailem');
+  }catch(e){ stav('chyba: '+(e.message||e)); }
+}
+
+function kresli(){
+  const telo=document.getElementById('telo');
+  telo.innerHTML=LIDI.map((l,i)=>
+    '<tr data-i="'+i+'">'+
+      '<td><input type="text" class="f-jmeno" value="'+esc(l.jmeno)+'"></td>'+
+      '<td><input type="text" class="f-pin pin" inputmode="numeric" maxlength="6" value="'+esc(l.pin)+'"></td>'+
+      '<td><input type="text" class="f-mail" value="'+esc(l.mail||'')+'" placeholder="—"></td>'+
+      '<td class="cislo skryt">'+l.zapisu+'</td>'+
+      '<td class="cislo skryt">'+l.rezervaci+'</td>'+
+      '<td class="spravce-pr" title="přepnout právo správce">'+(l.spravce?'✓':'·')+'</td>'+
+      '<td><div class="akce">'+
+        '<button class="ulozit" disabled>Uložit</button>'+
+        '<button class="smazat">Smazat</button>'+
+      '</div></td>'+
+    '</tr>').join('');
+
+  telo.querySelectorAll('tr').forEach(tr=>{
+    const i=+tr.getAttribute('data-i');
+    const l=LIDI[i];
+    const jm=tr.querySelector('.f-jmeno'), pn=tr.querySelector('.f-pin'), ml=tr.querySelector('.f-mail');
+    const ul=tr.querySelector('.ulozit'), sm=tr.querySelector('.smazat');
+
+    function zmena(){
+      const jinak = jm.value!==l.jmeno || pn.value!==l.pin || (ml.value||'')!==(l.mail||'');
+      ul.disabled=!jinak;
+      tr.classList.toggle('zmeneno', jinak);
+    }
+    [jm,pn,ml].forEach(f=>f.addEventListener('input',()=>{
+      if(f===pn) pn.value=pn.value.replace(/\D/g,'').slice(0,6);
+      zmena();
+    }));
+
+    ul.onclick=async()=>{
+      if(pn.value.length!==6){ alert('PIN musí být 6 číslic.'); return; }
+      if(!jm.value.trim()){ alert('Jméno je povinné.'); return; }
+      if(pn.value!==l.pin && LIDI.some(x=>x.pin===pn.value)){ alert('Tenhle PIN už někdo má.'); return; }
+      ul.disabled=true; stav('ukládám '+jm.value+'…');
+      try{
+        const { error } = await sb.rpc('lidi_zapis',{
+          p_pin:PIN, p_pin_novy:pn.value, p_jmeno:jm.value.trim(),
+          p_mail:ml.value.trim()||null, p_pin_stary:l.pin });
+        if(error) throw error;
+        await nacti(); stav('uloženo');
+      }catch(e){ stav('chyba: '+(e.message||e)); ul.disabled=false; }
+    };
+
+    sm.onclick=async()=>{
+      if(l.pin===PIN){ alert('Sám sebe smazat nemůžeš.'); return; }
+      let text='Smazat '+l.jmeno+'?';
+      if(l.zapisu) text+='\n\nJeho '+l.zapisu+' zápisů zůstane v datech (nesou jméno).';
+      if(!confirm(text)) return;
+      let uvolnit=false;
+      if(l.rezervaci) uvolnit=confirm('Má rezervovaných '+l.rezervaci+' domů. Uvolnit je pro ostatní?');
+      stav('mažu…');
+      try{
+        const { data, error } = await sb.rpc('lidi_smaz',{
+          p_pin:PIN, p_pin_cil:l.pin, p_uvolnit_rezervace:uvolnit });
+        if(error) throw error;
+        const uv=(data&&data[0]&&data[0].uvolneno)||0;
+        await nacti();
+        stav('smazáno'+(uv?', uvolněno '+uv+' domů':''));
+      }catch(e){ stav('chyba: '+(e.message||e)); }
+    };
+
+    tr.querySelector('.spravce-pr').onclick=async()=>{
+      const nove=!l.spravce;
+      if(l.pin===PIN && !nove){ alert('Sám sobě právo správce odebrat nemůžeš.'); return; }
+      if(nove && !confirm(l.jmeno+' bude moct editovat PINy všech. Pokračovat?')) return;
+      stav('měním práva…');
+      try{
+        const { error } = await sb.rpc('lidi_spravce',{ p_pin:PIN, p_pin_cil:l.pin, p_spravce:nove });
+        if(error) throw error;
+        await nacti(); stav('práva změněna');
+      }catch(e){ stav('chyba: '+(e.message||e)); }
+    };
+  });
+}
+
+/* ---------- nový člověk ---------- */
+const novyBlok=document.getElementById('novyBlok');
+document.getElementById('pridat').onclick=()=>{
+  novyBlok.style.display='block';
+  document.getElementById('nJmeno').focus();
+};
+document.getElementById('nZrusit').onclick=()=>{
+  novyBlok.style.display='none';
+  ['nJmeno','nPin','nMail'].forEach(id=>document.getElementById(id).value='');
+};
+document.getElementById('nPin').addEventListener('input',e=>{
+  e.target.value=e.target.value.replace(/\D/g,'').slice(0,6);
+});
+document.getElementById('nahodny').onclick=()=>{
+  let p;
+  do { p=String(Math.floor(100000+Math.random()*900000)); } while(LIDI.some(l=>l.pin===p));
+  document.getElementById('nPin').value=p;
+};
+document.getElementById('nUlozit').onclick=async()=>{
+  const jm=document.getElementById('nJmeno').value.trim();
+  const pn=document.getElementById('nPin').value;
+  const ml=document.getElementById('nMail').value.trim();
+  if(!jm){ alert('Jméno je povinné.'); return; }
+  if(pn.length!==6){ alert('PIN musí být 6 číslic.'); return; }
+  if(LIDI.some(l=>l.pin===pn)){ alert('Tenhle PIN už někdo má.'); return; }
+  stav('přidávám…');
+  try{
+    const { error } = await sb.rpc('lidi_zapis',{ p_pin:PIN, p_pin_novy:pn, p_jmeno:jm, p_mail:ml||null });
+    if(error) throw error;
+    document.getElementById('nZrusit').onclick();
+    await nacti(); stav('přidáno');
+  }catch(e){ stav('chyba: '+(e.message||e)); }
+};
+
+/* ---------- export ---------- */
+document.getElementById('csv').onclick=()=>{
+  const hlavicka='pin;jmeno;mail';
+  const radky=LIDI.map(l=>[l.pin,l.jmeno,l.mail||''].join(';'));
+  const blob=new Blob(['﻿'+hlavicka+'\n'+radky.join('\n')+'\n'],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='lidi2_zaloha.csv';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  stav('CSV staženo');
+};
+document.getElementById('obnovit').onclick=nacti;
+</script>
+</body>
+</html>

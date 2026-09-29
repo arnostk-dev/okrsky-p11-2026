@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Pochůzka P11 — 2. kolo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --bg:#0d0f12; --panel:#161a1f; --line:#2a2f37;
+    --zluta:#FFF84D; --text:#e8eaed; --dim:#8b929c;
+    --n:#9aa0a8;      /* nedostal se dovnitr - seda */
+    --a:#36d07a;      /* do schranek - zelena */
+    --x:#3b9dff;      /* stojan - modra */
+    --aa:#8fb83a;     /* pustili nas dovnitr - olivova */
+    --nn:#4a4f57;     /* nebytovy objekt - tmava */
+    /* obrysy = co vime z 1. kola */
+    --o-a:#5a6068; --o-aa:#b14ad6; --o-x:#ff4d4d; --o-n:#ff9f40; --o-nic:#ffffff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+  #map{position:absolute;inset:0;background:#0d0f12}
+
+  .topbar{position:absolute;top:0;left:0;right:0;z-index:1000;
+    background:linear-gradient(180deg,rgba(13,15,18,.95),rgba(13,15,18,.0));
+    padding:10px 12px 18px;display:flex;align-items:center;gap:10px;pointer-events:none}
+  .topbar > *{pointer-events:auto}
+  .brand{font-weight:800;font-size:15px;color:var(--zluta);letter-spacing:.3px;white-space:nowrap}
+  .brand small{font-size:10px;color:var(--dim);display:block;font-weight:600;letter-spacing:0}
+  .who{font-size:11px;color:var(--dim);cursor:pointer;border:1px solid var(--line);
+    background:var(--panel);border-radius:20px;padding:3px 9px;white-space:nowrap}
+  .counts{display:flex;gap:6px;font-size:12px;font-weight:700;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:5px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  .controls{position:absolute;left:0;right:0;bottom:0;z-index:1000;
+    background:linear-gradient(0deg,rgba(13,15,18,.96),rgba(13,15,18,.0));
+    padding:24px 12px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;pointer-events:none}
+  .controls > *{pointer-events:auto}
+  button{font-family:inherit;font-weight:700;font-size:14px;border:none;border-radius:12px;
+    padding:12px 14px;background:var(--panel);color:var(--text);border:1px solid var(--line);
+    display:flex;align-items:center;gap:7px;cursor:pointer;min-height:46px}
+  button:active{transform:scale(.97)}
+  button.primary{background:var(--zluta);color:#000;border-color:var(--zluta)}
+  button.gps{background:#1b3a5c;border-color:#27517d;color:#cfe6ff}
+  .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .seg button{border:none;border-radius:0;background:transparent;min-height:44px;padding:10px 12px;font-size:13px}
+  .seg button.on{background:var(--zluta);color:#000}
+  .save-state{font-size:11px;color:var(--dim);margin-left:6px;align-self:center;min-width:64px}
+
+  .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border-radius:14px;border:1px solid var(--line)}
+  .leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
+  .leaflet-popup-content{margin:13px 15px;min-width:230px;max-height:70vh;overflow-y:auto}
+  .pop-h{font-size:17px;font-weight:800;margin-bottom:2px}
+  .pop-sub{font-size:12px;color:var(--dim);margin-bottom:10px}
+  .pop-sch{color:var(--zluta);font-weight:700}
+  .stav-row{display:flex;gap:7px;margin-bottom:9px}
+  .stav-row button{flex:1;justify-content:center;font-size:15px;min-height:50px;font-weight:800}
+  .sb-n.on{background:var(--n);color:#000;border-color:var(--n)}
+  .sb-a.on{background:var(--a);color:#000;border-color:var(--a)}
+  .sb-x.on{background:var(--x);color:#000;border-color:var(--x)}
+  .sb-aa.on{background:var(--aa);color:#000;border-color:var(--aa)}
+  .stav-row2{display:flex;gap:7px;margin-bottom:9px}
+  .stav-row2 button{flex:1;justify-content:center;font-size:14px;min-height:44px;font-weight:800}
+  .sb-aa{color:#a8cc5a}
+  .sb-a1{color:var(--a)}
+  .pop-pozn{display:flex;gap:6px;margin-bottom:9px}
+  .pop-pozn input{flex:1;background:#0d0f12;border:1px solid var(--line);border-radius:10px;
+    color:var(--text);font-family:inherit;font-size:14px;padding:9px 10px;min-width:0}
+  .pop-pozn button{padding:9px 12px;min-height:0}
+  .pop-grp{font-size:12px;color:var(--zluta);background:#0d0f12;border:1px solid var(--line);
+    border-radius:9px;padding:6px 9px;margin-bottom:10px;line-height:1.45}
+  .pop-grp span{display:block;color:var(--dim);font-size:11px}
+  .pop-meta{font-size:11px;color:var(--dim);margin-bottom:8px;min-height:14px}
+  .pop-clear{font-size:12px;color:var(--dim);text-align:center;cursor:pointer;padding:4px}
+
+  /* karta "co o dome vime" */
+  .pop-vime{background:#0d0f12;border:1px solid var(--line);border-radius:9px;
+    padding:7px 9px;margin-bottom:10px;font-size:12px;line-height:1.5}
+  .pop-vime b{color:var(--text)}
+  .pop-vime .radek{color:var(--dim)}
+  .pop-vime .k1{font-weight:700}
+  /* sekce v popupu */
+  .sek{border-top:1px solid var(--line);margin:10px -15px 9px;padding:9px 15px 0}
+  .sek-h{font-size:11px;color:var(--dim);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px}
+  .rez-kdo{font-size:12px;margin-bottom:7px}
+  .rez-kdo b{color:var(--zluta)}
+  .radek-btn{display:flex;gap:7px}
+  .radek-btn button{flex:1;justify-content:center;min-height:42px;font-size:13px}
+  .btn-rez{background:var(--zluta);color:#000;border-color:var(--zluta)}
+  .btn-nn{background:var(--nn);color:#fff;border-color:#5c626b}
+  .prz-list{font-size:12px;line-height:1.5;margin-bottom:7px}
+  .prz-list .p{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed var(--line)}
+  .prz-list .p em{color:var(--dim);font-style:normal;font-size:11px}
+  .prz-list .smaz{color:#ff6b6b;cursor:pointer;font-size:11px;flex-shrink:0}
+  .prz-form{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .prz-form input{background:#0d0f12;border:1px solid var(--line);border-radius:10px;
+    color:var(--text);font-family:inherit;font-size:13px;padding:8px 10px}
+
+  .gate{position:absolute;inset:0;z-index:2000;background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:14px}
+  .gate h1{color:var(--zluta);font-size:22px;font-weight:800}
+  .gate p{color:var(--dim);font-size:13px;text-align:center;max-width:280px;line-height:1.5}
+  .pin-box{display:flex;gap:6px;margin-top:4px}
+  .pin-box input{width:44px;height:58px;text-align:center;font-size:24px;font-weight:800;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--text);
+    padding:0;min-width:0}
+  @media (max-width:380px){ .pin-box{gap:4px} .pin-box input{width:38px;height:52px;font-size:21px} }
+  .pin-box input:focus{outline:none;border-color:var(--zluta)}
+  .gate .err{color:#ff6b6b;font-size:13px;min-height:18px;font-weight:700}
+
+  .hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;
+    max-width:300px;font-size:14px;line-height:1.5;text-align:center;color:var(--dim)}
+  .hint b{color:var(--text)}
+
+  .legend{position:absolute;inset:0;z-index:1500;background:rgba(13,15,18,.94);overflow-y:auto;
+    display:flex;flex-direction:column;align-items:center;padding:24px 20px 40px;cursor:pointer}
+  .legend h2{color:var(--zluta);font-size:20px;font-weight:800;margin-bottom:2px}
+  .legend .sub{color:var(--dim);font-size:13px;margin-bottom:16px;text-align:center}
+  .legend .grp-h{color:var(--text);font-weight:800;font-size:13px;align-self:flex-start;
+    max-width:340px;width:100%;margin:12px auto 7px}
+  .legend .item{display:flex;align-items:center;gap:12px;width:100%;max-width:340px;
+    padding:9px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:var(--panel)}
+  .legend .bul{width:18px;height:18px;border-radius:50%;flex-shrink:0;border:2px solid #000}
+  .legend .lbl{font-weight:800;font-size:15px;color:var(--text);min-width:28px}
+  .legend .desc{font-size:12.5px;color:var(--dim);text-align:left;line-height:1.35}
+  .legend .tap{color:var(--dim);font-size:12px;margin-top:16px}
+</style>
+</head>
+<body>
+
+<!-- PIN GATE -->
+<div class="gate" id="gate">
+  <h1>Pochůzka P11 — 2. kolo</h1>
+  <p>Zadej svůj 6místný PIN. Stavy, rezervace i poznámky se sdílí živě se všemi roznašeči.</p>
+  <div class="pin-box" id="pinbox">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="0">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="1">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="2">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="3">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="4">
+    <input type="tel" inputmode="numeric" maxlength="1" data-i="5">
+  </div>
+  <div class="err" id="pinerr"></div>
+</div>
+
+<div id="map"></div>
+
+<div class="topbar">
+  <span class="brand">Pochůzka P11<small>2. kolo</small></span>
+  <span class="who" id="who"></span>
+  <div class="counts" id="counts"></div>
+</div>
+
+<div class="controls">
+  <div class="seg" id="filter">
+    <button data-f="moje" class="on">Moje</button>
+    <button data-f="zbyva">Zbývá</button>
+    <button data-f="vse">Vše</button>
+    <button data-f="kontrola">Kontrola</button>
+  </div>
+  <button class="gps" id="gps">📍 Já</button>
+  <span class="save-state" id="savestate">—</span>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============================================================
+   KONFIGURACE — publishable klíč + URL jsou vědomě veřejné
+   (ochranu dělá RLS + serverové ověření PINu)
+
+   2. KOLO: vlastní tabulky stavy2 / lidi2 / rezervace / typ_objektu / priznivci.
+   Tabulky 1. kola (stavy, lidi) se jen ČTOU jako podklad, nikdy se do nich nezapisuje.
+   ============================================================ */
+const SUPABASE_URL = 'https://subqgsfbgqbtvntjydoz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_VfAWVaGLsFN7H-cZSENGHA_fviIkJD1';
+const DATA_URL     = 'domy2.json';
+
+const LS_PIN   = 'pochuzka2_p11_pin';
+const LS_NAME  = 'pochuzka2_p11_jmeno';
+const LS_QUEUE = 'pochuzka2_p11_fronta';
+
+const PIN_DELKA = 6;    // 2. kolo ma 6mistne PINy (1. kolo melo 4mistne)
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  realtime:{ params:{ eventsPerSecond:5 } }
+});
+
+let DOMY = [];
+let PIN = null, JMENO = null;
+
+/* klíč domu: ulice|okrsek|čp|label (bez ulice není unikátní) */
+function key(d){ return d.ul+'|'+d.ok+'|'+String(d.cd)+'|'+d.label; }
+
+/* skupiny: jeden dům s adresou do dvou ulic = jedna schránka, dva klíče */
+let SKUPINY = {};
+function clenove(d){ return d.grp ? (SKUPINY[d.grp] || [d]) : [d]; }
+
+/* ---- lokální zrcadla serverových dat ---- */
+let stav2 = {};    // dum -> {stav,pozn,kdo,kdy}     2. kolo, do toho zapisujeme
+let k1    = {};    // dum -> {stav,pozn}             1. kolo, jen podklad
+let rez   = {};    // dum -> {kdo,kdy}               rezervace
+let typy  = {};    // dum -> {typ,kdo}               NN / BYT verdikt člověka
+let przPocty = {}; // dum -> počet příznivců
+let ZPUSOB = {};   // kód RÚIAN -> {nazev, kategorie}
+
+/* ============================================================
+   PIN GATE
+   ============================================================ */
+const gate = document.getElementById('gate');
+const pinInputs = [...document.querySelectorAll('#pinbox input')];
+const pinErr = document.getElementById('pinerr');
+
+pinInputs.forEach((inp,idx)=>{
+  inp.addEventListener('input',()=>{
+    inp.value = inp.value.replace(/\D/g,'');
+    if(inp.value && idx<pinInputs.length-1) pinInputs[idx+1].focus();
+    if(pinInputs.every(i=>i.value)) submitPin();
+  });
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Backspace' && !inp.value && idx>0){ pinInputs[idx-1].focus(); pinInputs[idx-1].value=''; }
+  });
+});
+function readPin(){ return pinInputs.map(i=>i.value).join(''); }
+function clearPinInputs(){ pinInputs.forEach(i=>i.value=''); pinInputs[0].focus(); }
+
+async function submitPin(){
+  const pin = readPin();
+  if(pin.length!==PIN_DELKA) return;
+  pinErr.textContent='';
+  pinInputs.forEach(i=>i.disabled=true);
+  try{
+    const jmeno = await overPin(pin);
+    if(!jmeno){
+      pinErr.textContent='Neplatný PIN';
+      pinInputs.forEach(i=>i.disabled=false);
+      clearPinInputs();
+      return;
+    }
+    PIN=pin; JMENO=jmeno;
+    try{ localStorage.setItem(LS_PIN,pin); localStorage.setItem(LS_NAME,jmeno); }catch(e){}
+    startApp();
+  }catch(e){
+    const cachePin = localStorage.getItem(LS_PIN);
+    const cacheName = localStorage.getItem(LS_NAME);
+    if(cachePin===pin && cacheName){ PIN=pin; JMENO=cacheName; startApp(true); }
+    else{
+      pinErr.textContent='Bez signálu a PIN není v paměti';
+      pinInputs.forEach(i=>i.disabled=false);
+      clearPinInputs();
+    }
+  }
+}
+async function overPin(pin){
+  const { data, error } = await sb.rpc('over_pin2',{ p_pin: pin });
+  if(error) throw error;
+  return data;
+}
+(function tryAutoLogin(){
+  const p = localStorage.getItem(LS_PIN);
+  // starsi 4mistny PIN z 1. kola v pameti prohlizece ignorujeme
+  if(p && p.length===PIN_DELKA){ pinInputs.forEach((inp,i)=>inp.value=p[i]); submitPin(); }
+  else if(p){ try{ localStorage.removeItem(LS_PIN); localStorage.removeItem(LS_NAME); }catch(e){} }
+})();
+
+/* ============================================================
+   START
+   ============================================================ */
+let started=false;
+function startApp(offline){
+  if(started) return; started=true;
+  gate.style.display='none';
+  document.getElementById('who').textContent='👤 '+JMENO;
+  showLegend();
+
+  fetch(DATA_URL)
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(data=>{
+      DOMY=data;
+      SKUPINY={};
+      for(const d of DOMY) if(d.grp) (SKUPINY[d.grp]=SKUPINY[d.grp]||[]).push(d);
+      initMap();
+      nactiVse();
+      subscribeRealtime();
+      flushQueue();
+    })
+    .catch(e=>{
+      document.body.insertAdjacentHTML('beforeend',
+        '<div class="hint"><b>Chyba načtení dat</b><br>domy2.json se nepodařilo načíst ('+e.message+').<br>'+
+        'Otevři appku přes web server (GitHub Pages), ne přímo ze souboru.</div>');
+    });
+}
+
+document.getElementById('who').onclick=()=>{
+  if(!confirm('Odhlásit '+JMENO+'? Bude potřeba znovu zadat PIN.')) return;
+  try{ localStorage.removeItem(LS_PIN); localStorage.removeItem(LS_NAME); }catch(e){}
+  location.reload();
+};
+
+function showLegend(){
+  const stavy=[
+    ['#36d07a','A','do schránek, běžně doručeno'],
+    ['#8fb83a','AA','zavřeno, ale dostali jsme se dovnitř'],
+    ['#36d07a','A1','doručeno, 1 schránka (uloží A + poznámku „1“)'],
+    ['#3b9dff','X','stojan / nedoručeno'],
+    ['#9aa0a8','N','nedostal se dovnitř'],
+    ['#4a4f57','NN','nebytový objekt, nechodí se tam'],
+  ];
+  const obrysy=[
+    ['#ff9f40','N','minule se tam nikdo nedostal'],
+    ['#ff4d4d','X','minule stojan / nedoručeno'],
+    ['#b14ad6','AA','minule nás někdo pustil dovnitř (schránky jsou vevnitř)'],
+    ['#5a6068','A','minule bez problému'],
+    ['#ffffff','—','v 1. kole bez záznamu'],
+  ];
+  const r1=stavy.map(([c,l,d])=>
+    '<div class="item"><span class="bul" style="background:'+c+';border-color:#000"></span>'+
+    '<span class="lbl">'+l+'</span><span class="desc">'+d+'</span></div>').join('');
+  const r2=obrysy.map(([c,l,d])=>
+    '<div class="item"><span class="bul" style="background:transparent;border-color:'+c+'"></span>'+
+    '<span class="lbl">'+l+'</span><span class="desc">'+d+'</span></div>').join('');
+  const el=document.createElement('div');
+  el.className='legend';
+  el.innerHTML='<h2>Legenda</h2><div class="sub">Výplň bodu je letošní stav, obrys je to, co víme z prvního kola.</div>'+
+    '<div class="grp-h">Výplň: letošní stav</div>'+r1+
+    '<div class="grp-h">Obrys: co bylo v 1. kole</div>'+r2+
+    '<div class="grp-h">Ostatní značky</div>'+
+    '<div class="item"><span class="bul" style="background:#FFF84D;border-color:#000"></span>'+
+      '<span class="lbl">☝</span><span class="desc">žlutá svatozář = dům je rezervovaný, v popupu je čí</span></div>'+
+    '<div class="item"><span class="bul" style="background:transparent;border-color:transparent">★</span>'+
+      '<span class="lbl"></span><span class="desc">hvězdička = v domě máme příznivce</span></div>'+
+    '<div class="item"><span class="bul" style="background:transparent;border-color:var(--line)"></span>'+
+      '<span class="lbl">◦</span><span class="desc">dva body spojené černou čárkou = jeden dům s adresou do dvou ulic, '+
+      'stačí označit jeden</span></div>'+
+    '<div class="tap">— klikni kamkoli pro zavření —</div>';
+  el.onclick=()=>el.remove();
+  document.body.appendChild(el);
+}
+
+/* ============================================================
+   MAPA
+   ============================================================ */
+let map, layer, layerZnacky, markerByKey={}, filter='moje';
+
+const VYPLN={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',AA:'#8fb83a',none:'#ffffff',NN:'#4a4f57'};
+const OBRYS={A:'#5a6068',AA:'#b14ad6',X:'#ff4d4d',N:'#ff9f40',none:'#ffffff'};
+
+function initMap(){
+  map = L.map('map',{zoomControl:false,tap:true}).setView([50.033,14.505],14);
+  L.control.zoom({position:'topright'}).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:19, attribution:'&copy; OpenStreetMap'
+  }).addTo(map);
+  layer=L.layerGroup().addTo(map);
+  layerZnacky=L.layerGroup().addTo(map);
+
+  document.querySelectorAll('#filter button').forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll('#filter button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); filter=b.getAttribute('data-f'); render();
+    };
+  });
+  render();
+}
+
+function stOf(k){ return (stav2[k]&&stav2[k].stav)||''; }
+function k1Of(k){ return (k1[k]&&k1[k].stav)||''; }
+function rezOf(k){ return rez[k]&&rez[k].kdo; }
+function mojeRez(k){ return rezOf(k)===JMENO; }
+
+/* typ objektu: verdikt člověka vyhrává, jinak návrh z registru */
+function typOf(d){
+  const k=key(d);
+  if(typy[k]) return typy[k].typ;                 // NN nebo BYT, potvrzeno člověkem
+  return null;
+}
+function navrhNN(d){
+  // registr říká nebytový a my jsme tam nic nedoručili → návrh NN
+  if(d.kat!=='n') return false;
+  const s=stOf(key(d)), s1=k1Of(key(d));
+  if(s==='A'||s==='AA'||s1==='A'||s1==='AA') return false;   // doručeno → nechat
+  if(s1==='X') return false;                                  // X → projít ručně
+  return true;
+}
+function jeNN(d){ const t=typOf(d); if(t) return t==='NN'; return navrhNN(d); }
+/* dům, který má projít ruční kontrolou */
+function kProjiti(d){
+  if(typOf(d)) return false;                        // už rozhodnuto
+  const s1=k1Of(key(d));
+  if(s1==='A'||s1==='AA') return false;
+  if(d.kat==='n' && s1==='X') return true;
+  if(d.kat==='i') return true;                      // instituce: schránka tam být může
+  return false;
+}
+
+/* odhad počtu schránek: co lidi napsali v 1. kole, jinak počet bytů z registru */
+function schranek(d){
+  const p=(k1[key(d)]&&k1[key(d)].pozn)||'';
+  const m=/\d+/.exec(p);
+  if(m) return {n:parseInt(m[0],10), zdroj:'1. kolo'};
+  if(d.sch) return {n:d.sch, zdroj:'sčítání zvenku'};
+  if(d.bytyA) return {n:d.bytyA, zdroj:'RÚIAN'};
+  return {n:null, zdroj:null};
+}
+
+function visible(d){
+  const k=key(d);
+  if(filter==='kontrola') return kProjiti(d) || navrhNN(d);
+  if(jeNN(d) && filter!=='vse') return false;
+  if(filter==='moje')  return mojeRez(k);
+  if(filter==='zbyva'){ const s=stOf(k); return mojeRez(k) && s!=='A' && s!=='X' && s!=='AA'; }
+  return true;
+}
+
+function render(){
+  if(!map) return;
+  layer.clearLayers(); layerZnacky.clearLayers(); markerByKey={};
+
+  for(const g in SKUPINY){
+    const cl=SKUPINY[g];
+    if(!cl.some(visible)) continue;
+    const h=cl.find(y=>y.hl)||cl[0];
+    for(const m of cl) if(m!==h)
+      L.polyline([[h.lat,h.lon],[m.lat,m.lon]],
+        {color:'#000',weight:2,opacity:.75,interactive:false}).addTo(layer);
+  }
+
+  let n=0,a=0,x=0,aa=0,tot=0,rezMoje=0,nn=0;
+  for(const d of DOMY){
+    const k=key(d);
+    const s=stOf(k);
+    const hlavni = (!d.grp || d.hl);
+    if(hlavni && !jeNN(d)){
+      tot++;
+      if(s==='N')n++; else if(s==='A')a++; else if(s==='X')x++; else if(s==='AA')aa++;
+      if(mojeRez(k)) rezMoje++;
+    }
+    if(hlavni && jeNN(d)) nn++;
+    if(!visible(d)) continue;
+
+    const nnD = jeNN(d);
+    const sch = schranek(d).n;
+    const r = nnD ? 4 : Math.max(4.5, Math.min(11, 4.5 + Math.sqrt(sch||1)*0.8));
+    const m=L.circleMarker([d.lat,d.lon],{
+      radius:r,
+      fillColor: nnD ? VYPLN.NN : (s? VYPLN[s] : VYPLN.none),
+      color: nnD ? '#000' : (OBRYS[k1Of(k)] || OBRYS.none),
+      weight: nnD ? 1 : 2.5,
+      fillOpacity: nnD ? .55 : (s?0.95:0.45)
+    });
+
+    // rezervace = žlutá svatozář pod bodem
+    if(rezOf(k)){
+      L.circleMarker([d.lat,d.lon],{
+        radius:r+5, fillColor:'#FFF84D', color:'#FFF84D', weight:1,
+        fillOpacity: mojeRez(k)?0.42:0.20, opacity:mojeRez(k)?0.9:0.45, interactive:false
+      }).addTo(layer);
+    }
+    m.on('click',()=>openDom(d,m));
+    m.addTo(layer); markerByKey[k]=m;
+
+    // Hvězdička jen u domu, který mám rezervovaný. Server posílá počty
+    // taky jen pro moje domy, tady je to druhá pojistka.
+    if(przPocty[k] && mojeRez(k)){
+      L.marker([d.lat,d.lon],{
+        interactive:false,
+        icon:L.divIcon({className:'',html:'<div style="font-size:15px;line-height:1;color:#FFD34D;'+
+          'text-shadow:0 0 3px #000;transform:translate(-50%,-160%)">★</div>',iconSize:[0,0]})
+      }).addTo(layerZnacky);
+    }
+  }
+  document.getElementById('counts').innerHTML =
+    '<span class="chip"><span class="dot" style="background:'+VYPLN.A+'"></span>'+(a+aa)+'</span>'+
+    '<span class="chip"><span class="dot" style="background:'+VYPLN.X+'"></span>'+x+'</span>'+
+    '<span class="chip"><span class="dot" style="background:'+VYPLN.N+'"></span>'+n+'</span>'+
+    '<span class="chip" style="color:var(--zluta)">⬤ '+rezMoje+'</span>'+
+    '<span class="chip" style="color:var(--dim)">'+(a+aa+x)+'/'+tot+'</span>';
+}
+
+/* ============================================================
+   POPUP DOMU
+   ============================================================ */
+function openDom(d,m){
+  const k=key(d);
+  const rec=stav2[k]||{};
+  const cur=rec.stav||'';
+  const meta = rec.kdo? (rec.kdo+(rec.kdy?' · '+fmtKdy(rec.kdy):'')) : '';
+  const poznVal = (rec.pozn||'').replace(/"/g,'&quot;');
+  const cl = clenove(d);
+  const grpInfo = cl.length>1
+    ? '<div class="pop-grp">též '+cl.filter(y=>y!==d).map(y=>y.ul+' '+y.label).join(' · ')+
+      '<span>jeden dům, zapíše se na '+cl.length+' adresy</span></div>'
+    : '';
+
+  /* co o domě víme: 1. kolo + registr */
+  const s1=k1[k]||{}; const sch=schranek(d);
+  const K1TXT={A:'vhozeno zvenku',AA:'pustili nás dovnitř',X:'stojan / nedoručeno',N:'nedostali jsme se'};
+  const K1BAR={A:'#5a6068',AA:'#b14ad6',X:'#ff4d4d',N:'#ff9f40'};
+  let vime='<div class="pop-vime">';
+  vime += '<div class="radek">1. kolo: '+(s1.stav
+      ? '<span class="k1" style="color:'+K1BAR[s1.stav]+'">'+s1.stav+'</span> '+(K1TXT[s1.stav]||'')
+        +(s1.pozn?' · <b>'+s1.pozn+'</b>':'')
+      : 'bez záznamu')+'</div>';
+  if(sch.n) vime += '<div class="radek">schránek: <b>'+sch.n+'</b> <span style="font-size:11px">('+sch.zdroj+')</span></div>';
+  const zp = d.ru && ZPUSOB[d.ru] ? ZPUSOB[d.ru].nazev : null;
+  if(zp || d.podl || d.byty){
+    let r='<div class="radek">registr: ';
+    if(zp) r += '<b>'+zp+'</b>';
+    const det=[];
+    if(d.byty) det.push(d.byty+' bytů'+(d.adr>1?' v objektu / '+d.adr+' adresy':''));
+    if(d.podl) det.push(d.podl+' podlaží');
+    if(det.length) r += (zp?' · ':'')+det.join(' · ');
+    vime += r+'</div>';
+  }
+  vime += '</div>';
+
+  /* rezervace */
+  const rkdo=rezOf(k);
+  let rezHtml = '<div class="sek"><div class="sek-h">Rezervace</div>';
+  rezHtml += '<div class="rez-kdo">'+(rkdo
+      ? (rkdo===JMENO ? 'máš rezervováno <b>ty</b>' : 'rezervoval <b>'+rkdo+'</b>')
+      : '<span style="color:var(--dim)">nikdo nerezervoval</span>')+'</div>';
+  rezHtml += '<div class="radek-btn">';
+  if(rkdo===JMENO) rezHtml += '<button id="rezOff">Uvolnit</button>';
+  else rezHtml += '<button class="btn-rez" id="rezOn">'+(rkdo?'Vzít si':'Rezervovat')+'</button>';
+  rezHtml += '<button id="rezUlice">Celá ulice</button></div></div>';
+
+  /* typ objektu */
+  const t=typOf(d);
+  let typHtml='';
+  if(t || navrhNN(d) || kProjiti(d)){
+    typHtml = '<div class="sek"><div class="sek-h">Co to je za objekt</div>';
+    if(t) typHtml += '<div class="rez-kdo">'+(t==='NN'
+        ? 'označeno jako <b>nebytový objekt</b>' : 'označeno jako <b>normální dům</b>')
+        +' <em style="color:var(--dim);font-style:normal;font-size:11px">('+(typy[k].kdo||'')+')</em></div>';
+    else typHtml += '<div class="rez-kdo" style="color:var(--dim)">'+(navrhNN(d)
+        ? 'registr říká nebytový a nikdy jsme tu nic nevhodili → návrh <b>NN</b>'
+        : 'podle registru to nemusí být obytný dům, zkontroluj')+'</div>';
+    typHtml += '<div class="radek-btn">'+
+      '<button class="btn-nn" id="typNN">Nebytový (NN)</button>'+
+      '<button id="typBYT">Je to dům</button></div>';
+    if(t) typHtml += '<div class="pop-clear" id="typClear">zrušit označení</div>';
+    typHtml += '</div>';
+  }
+
+  /* příznivci: kontakty jen u domu, který mám rezervovaný */
+  const pn=przPocty[k]||0;
+  const przHtml = '<div class="sek"><div class="sek-h">Příznivci v domě'+(pn&&mojeRez(k)?' ('+pn+')':'')+'</div>'+
+    '<div class="prz-list" id="przList"><span style="color:var(--dim)">načítám…</span></div>'+
+    '<div class="radek-btn"><button id="przAdd">+ přidat příznivce</button></div>'+
+    '<div class="prz-form" id="przForm" style="display:none">'+
+      '<input id="przJmeno" placeholder="jméno" maxlength="80">'+
+      '<input id="przKontakt" placeholder="telefon nebo mail (nepovinné)" maxlength="80">'+
+      '<input id="przPozn" placeholder="poznámka, patro, na co dát pozor" maxlength="120">'+
+      '<div class="radek-btn"><button class="primary" id="przSave">Uložit</button>'+
+      '<button id="przCancel">Zrušit</button></div>'+
+    '</div></div>';
+
+  const html =
+    '<div class="pop-h">'+d.label+'</div>'+
+    '<div class="pop-sub">'+d.ul+' · okrsek '+d.ok+'</div>'+
+    grpInfo + vime +
+    '<div class="stav-row">'+
+      '<button class="sb-n '+(cur==='N'?'on':'')+'" data-s="N">N</button>'+
+      '<button class="sb-a '+(cur==='A'?'on':'')+'" data-s="A">A</button>'+
+      '<button class="sb-x '+(cur==='X'?'on':'')+'" data-s="X">X</button>'+
+    '</div>'+
+    '<div class="stav-row2">'+
+      '<button class="sb-aa '+(cur==='AA'?'on':'')+'" data-s="AA">AA</button>'+
+      '<button class="sb-a1" data-a1="1">A1</button>'+
+    '</div>'+
+    '<div class="pop-pozn">'+
+      '<input id="poznIn" maxlength="50" placeholder="poznámka (počet schránek…)" value="'+poznVal+'">'+
+      '<button class="primary" id="poznSave">OK</button>'+
+    '</div>'+
+    '<div class="pop-meta">'+meta+'</div>'+
+    '<div class="pop-clear" data-s="">vymazat stav</div>'+
+    rezHtml + typHtml + przHtml;
+
+  m.bindPopup(html,{closeButton:false,offset:[0,-4],maxWidth:320}).openPopup();
+
+  setTimeout(()=>{
+    const pop=document.querySelector('.leaflet-popup');
+    if(!pop) return;
+
+    pop.querySelectorAll('.stav-row button, .stav-row2 button[data-s]').forEach(b=>{
+      b.onclick=()=>{
+        const v=b.getAttribute('data-s');
+        const pozn=(pop.querySelector('#poznIn').value||'').trim().slice(0,50);
+        setStav(d,k,v,pozn||null); map.closePopup();
+      };
+    });
+    const a1=pop.querySelector('[data-a1]');
+    if(a1) a1.onclick=()=>{
+      const c=(pop.querySelector('#poznIn').value||'').trim();
+      let np = !c ? '1' : (c==='1' ? '1' : '1, '+c);
+      setStav(d,k,'A',np.slice(0,50)); map.closePopup();
+    };
+    const sv=pop.querySelector('#poznSave');
+    if(sv) sv.onclick=()=>{
+      const pozn=(pop.querySelector('#poznIn').value||'').trim().slice(0,50);
+      setStav(d,k,null,pozn||''); map.closePopup();
+    };
+    const cle=pop.querySelector('.pop-clear[data-s]');
+    if(cle) cle.onclick=()=>{ clearStav(d,k); map.closePopup(); };
+
+    const rOn=pop.querySelector('#rezOn');
+    if(rOn) rOn.onclick=()=>{ rezervuj(clenove(d).map(key)); map.closePopup(); };
+    const rOff=pop.querySelector('#rezOff');
+    if(rOff) rOff.onclick=()=>{ zrusRez(clenove(d).map(key)); map.closePopup(); };
+    const rUl=pop.querySelector('#rezUlice');
+    if(rUl) rUl.onclick=()=>{
+      // Dům s adresou do dvou ulic se rezervuje celý, i když druhá adresa
+      // patří do jiné ulice nebo okrsku. Jinak by zůstala půlka domu volná.
+      const vybrane=DOMY.filter(y=>y.ul===d.ul && y.ok===d.ok && !jeNN(y));
+      const dumy=[...new Set(vybrane.flatMap(y=>clenove(y).map(key)))];
+      const navic=dumy.length-vybrane.length;
+      if(!confirm('Rezervovat '+d.ul+' v okrsku '+d.ok+'? To je '+vybrane.length+' adres'+
+                  (navic>0? ' plus '+navic+' druhých adres sloučených domů':'')+'.')) return;
+      rezervuj(dumy); map.closePopup();
+    };
+
+    const tNN=pop.querySelector('#typNN');
+    if(tNN) tNN.onclick=()=>{ setTyp(d,k,'NN'); map.closePopup(); };
+    const tBYT=pop.querySelector('#typBYT');
+    if(tBYT) tBYT.onclick=()=>{ setTyp(d,k,'BYT'); map.closePopup(); };
+    const tCl=pop.querySelector('#typClear');
+    if(tCl) tCl.onclick=()=>{ clearTyp(d,k); map.closePopup(); };
+
+    const pAdd=pop.querySelector('#przAdd');
+    const pForm=pop.querySelector('#przForm');
+    if(pAdd) pAdd.onclick=()=>{ pForm.style.display='flex'; pAdd.style.display='none';
+      const j=pop.querySelector('#przJmeno'); if(j) j.focus(); };
+    const pCan=pop.querySelector('#przCancel');
+    if(pCan) pCan.onclick=()=>{ pForm.style.display='none'; pAdd.style.display='flex'; };
+    const pSave=pop.querySelector('#przSave');
+    if(pSave) pSave.onclick=async()=>{
+      const jm=(pop.querySelector('#przJmeno').value||'').trim();
+      if(!jm){ alert('Jméno je povinné.'); return; }
+      const ko=(pop.querySelector('#przKontakt').value||'').trim();
+      const po=(pop.querySelector('#przPozn').value||'').trim();
+      await pridejPriznivce(k,jm,ko,po);
+      map.closePopup();
+    };
+    nactiPriznivce(k, pop.querySelector('#przList'));
+  },30);
+}
+
+function fmtKdy(iso){
+  try{
+    return new Date(iso).toLocaleString('cs-CZ',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'});
+  }catch(e){ return ''; }
+}
+
+/* ============================================================
+   ZÁPIS STAVU (stavy2) — s varováním u cizí rezervace
+   ============================================================ */
+function setStav(d,k,stavVal,poznVal,prepsatCizi){
+  const ted=new Date().toISOString();
+  for(const m of clenove(d)){
+    const mk=key(m);
+    const prev=stav2[mk]||{};
+    stav2[mk]={
+      stav: stavVal!==null ? stavVal : (prev.stav||null),
+      pozn: poznVal!==null ? poznVal : (prev.pozn||null),
+      kdo: JMENO, kdy: ted
+    };
+    sendZapis({dum:mk, stav:stavVal, pozn:poznVal, prepsat: !!prepsatCizi}, d, k, stavVal, poznVal);
+  }
+  render();
+}
+function clearStav(d,k){
+  for(const m of clenove(d)){ const mk=key(m); delete stav2[mk]; sendSmaz({dum:mk}); }
+  render();
+}
+
+async function sendZapis(op, d, k, stavVal, poznVal){
+  setSave('ukládám…');
+  try{
+    const { error } = await sb.rpc('zapis_stav2',{
+      p_pin:PIN, p_dum:op.dum, p_stav:op.stav, p_pozn:op.pozn, p_prepsat_cizi:op.prepsat
+    });
+    if(error) throw error;
+    setSave('uloženo');
+  }catch(e){
+    const msg=(e && (e.message||e.hint||'')) + '';
+    const mm=/REZERVACE_CIZI:(.*)$/.exec(msg);
+    if(mm){
+      // překonatelné varování: dům má rezervovaný někdo jiný
+      const kdo=(mm[1]||'').trim();
+      if(confirm('Dům má rezervovaný '+kdo+'. Přesto zapsat?')){
+        setStav(d,k,stavVal,poznVal,true);
+      }else{
+        nactiStavy2();            // vrátíme zobrazení do serverového stavu
+      }
+      return;
+    }
+    queuePush({typ:'zapis', ...op});
+    setSave('offline – ve frontě');
+  }
+}
+async function sendSmaz(op){
+  setSave('mažu…');
+  try{
+    const { error } = await sb.rpc('smaz_stav2',{ p_pin:PIN, p_dum:op.dum });
+    if(error) throw error;
+    setSave('smazáno');
+  }catch(e){ queuePush({typ:'smaz', ...op}); setSave('offline – ve frontě'); }
+}
+
+/* ============================================================
+   REZERVACE
+   ============================================================ */
+async function rezervuj(dumy){
+  setSave('rezervuju…');
+  // optimisticky
+  for(const k of dumy) rez[k]={kdo:JMENO, kdy:new Date().toISOString()};
+  render();
+  try{
+    const { data, error } = await sb.rpc('rezervuj',{ p_pin:PIN, p_dumy:dumy });
+    if(error) throw error;
+    const nelze=(data||[]).filter(r=>r.vysledek==='hotovo_nelze');
+    const prevzato=(data||[]).filter(r=>r.vysledek==='prevzato');
+    for(const r of nelze) delete rez[r.dum];
+    let t='rezervováno';
+    if(prevzato.length) t += ', '+prevzato.length+'× převzato';
+    if(nelze.length) t += ', '+nelze.length+' hotových nešlo';
+    setSave(t);
+    if(nelze.length) alert(nelze.length+' už hotových domů (A/AA) nelze přerezervovat. Zbytek zabrán.');
+    nactiRezervace();
+  }catch(e){
+    queuePush({typ:'rezervuj', dumy:dumy}); setSave('offline – ve frontě');
+  }
+}
+async function zrusRez(dumy){
+  setSave('uvolňuju…');
+  for(const k of dumy) delete rez[k];
+  render();
+  try{
+    const { error } = await sb.rpc('zrus_rezervaci',{ p_pin:PIN, p_dumy:dumy });
+    if(error) throw error;
+    setSave('uvolněno'); nactiRezervace();
+  }catch(e){ queuePush({typ:'zrus', dumy:dumy}); setSave('offline – ve frontě'); }
+}
+
+/* ============================================================
+   TYP OBJEKTU (NN / BYT)
+   ============================================================ */
+async function setTyp(d,k,typ){
+  typy[k]={typ:typ, kdo:JMENO};
+  render();
+  setSave('ukládám…');
+  try{
+    const { error } = await sb.rpc('zapis_typ',{ p_pin:PIN, p_dum:k, p_typ:typ });
+    if(error) throw error;
+    setSave('uloženo');
+  }catch(e){ queuePush({typ:'typ', dum:k, hodnota:typ}); setSave('offline – ve frontě'); }
+}
+async function clearTyp(d,k){
+  delete typy[k]; render();
+  try{
+    const { error } = await sb.rpc('smaz_typ',{ p_pin:PIN, p_dum:k });
+    if(error) throw error;
+    setSave('zrušeno');
+  }catch(e){ queuePush({typ:'typSmaz', dum:k}); setSave('offline – ve frontě'); }
+}
+
+/* ============================================================
+   PŘÍZNIVCI (jména a kontakty jdou jen přes RPC s PINem)
+   ============================================================ */
+async function nactiPriznivce(k, el){
+  try{
+    const { data, error } = await sb.rpc('priznivci_dumu',{ p_pin:PIN, p_dum:k });
+    if(error) throw error;
+    if(!el) return;
+    if(!data || !data.length){ el.innerHTML='<span style="color:var(--dim)">nikdo zapsaný</span>'; return; }
+    // kontakt posila server jen u domu, ktery mam rezervovany (priznak muj)
+    const muj = data.some(p=>p.muj);
+    el.innerHTML=data.map(p=>
+      '<div class="p"><span><b>'+esc(p.jmeno)+'</b>'+
+      (p.kontakt?'<br><em>'+esc(p.kontakt)+'</em>':'')+
+      (p.pozn?'<br><em>'+esc(p.pozn)+'</em>':'')+'</span>'+
+      '<span class="smaz" data-id="'+p.id+'">smazat</span></div>').join('')
+      + (muj? '' : '<div style="color:var(--dim);font-size:11px;padding-top:5px">'+
+          'kontakty se zobrazí, až si dům rezervuješ</div>');
+    el.querySelectorAll('.smaz').forEach(s=>{
+      s.onclick=async()=>{
+        if(!confirm('Smazat příznivce?')) return;
+        await sb.rpc('smaz_priznivce',{ p_pin:PIN, p_id:parseInt(s.getAttribute('data-id'),10) });
+        await nactiPrzPocty(); render(); map.closePopup();
+      };
+    });
+  }catch(e){ if(el) el.innerHTML='<span style="color:#ff6b6b">nepodařilo se načíst</span>'; }
+}
+async function pridejPriznivce(k, jmeno, kontakt, pozn){
+  setSave('ukládám…');
+  try{
+    const { error } = await sb.rpc('zapis_priznivce',{
+      p_pin:PIN, p_dum:k, p_jmeno:jmeno, p_kontakt:kontakt||null, p_pozn:pozn||null });
+    if(error) throw error;
+    przPocty[k]=(przPocty[k]||0)+1; render(); setSave('uloženo');
+  }catch(e){
+    queuePush({typ:'priznivec', dum:k, jmeno:jmeno, kontakt:kontakt, pozn:pozn});
+    setSave('offline – ve frontě');
+  }
+}
+async function nactiPrzPocty(){
+  try{
+    const { data, error } = await sb.rpc('priznivci_pocty',{ p_pin:PIN });
+    if(error) throw error;
+    przPocty={};
+    for(const r of (data||[])) przPocty[r.dum]=r.pocet;
+  }catch(e){}
+}
+function esc(s){ return (s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+function setSave(t){ const el=document.getElementById('savestate'); if(el) el.textContent=t; }
+
+/* ============================================================
+   OFFLINE FRONTA
+   ============================================================ */
+function queueGet(){ try{ return JSON.parse(localStorage.getItem(LS_QUEUE)||'[]'); }catch(e){ return []; } }
+function queueSet(q){ try{ localStorage.setItem(LS_QUEUE,JSON.stringify(q)); }catch(e){} }
+function queuePush(op){ const q=queueGet(); q.push(op); queueSet(q); }
+
+async function flushQueue(){
+  let q=queueGet();
+  if(!q.length) return;
+  const zbytek=[];
+  for(const op of q){
+    try{
+      if(op.typ==='zapis'){
+        const { error } = await sb.rpc('zapis_stav2',{ p_pin:PIN, p_dum:op.dum, p_stav:op.stav,
+          p_pozn:op.pozn, p_prepsat_cizi:true });   // ve frontě se už neptáme, rozhodnuto bylo v terénu
+        if(error) throw error;
+      }else if(op.typ==='smaz'){
+        const { error } = await sb.rpc('smaz_stav2',{ p_pin:PIN, p_dum:op.dum });
+        if(error) throw error;
+      }else if(op.typ==='rezervuj'){
+        const { error } = await sb.rpc('rezervuj',{ p_pin:PIN, p_dumy:op.dumy });
+        if(error) throw error;
+      }else if(op.typ==='zrus'){
+        const { error } = await sb.rpc('zrus_rezervaci',{ p_pin:PIN, p_dumy:op.dumy });
+        if(error) throw error;
+      }else if(op.typ==='typ'){
+        const { error } = await sb.rpc('zapis_typ',{ p_pin:PIN, p_dum:op.dum, p_typ:op.hodnota });
+        if(error) throw error;
+      }else if(op.typ==='typSmaz'){
+        const { error } = await sb.rpc('smaz_typ',{ p_pin:PIN, p_dum:op.dum });
+        if(error) throw error;
+      }else if(op.typ==='priznivec'){
+        const { error } = await sb.rpc('zapis_priznivce',{ p_pin:PIN, p_dum:op.dum, p_jmeno:op.jmeno,
+          p_kontakt:op.kontakt||null, p_pozn:op.pozn||null });
+        if(error) throw error;
+      }
+    }catch(e){ zbytek.push(op); }
+  }
+  queueSet(zbytek);
+  if(!zbytek.length && q.length) setSave('fronta odeslána');
+}
+window.addEventListener('online',()=>{ if(started) flushQueue(); });
+setInterval(()=>{ if(started && navigator.onLine && queueGet().length) flushQueue(); },20000);
+
+/* ============================================================
+   NAČTENÍ DAT
+   Stránkováno po 1000 — PostgREST víc řádků na dotaz nevrátí a tiše seřízne.
+   ============================================================ */
+async function stranky(tabulka, sloupce){
+  const PAGE=1000; let vse=[], od=0;
+  for(;;){
+    const { data, error } = await sb.from(tabulka).select(sloupce).range(od, od+PAGE-1);
+    if(error) throw error;
+    vse=vse.concat(data);
+    if(data.length<PAGE) break;
+    od+=PAGE;
+  }
+  return vse;
+}
+
+async function nactiStavy2(){
+  try{
+    const rows=await stranky('stavy2','dum,stav,pozn,kdo,kdy');
+    stav2={};
+    for(const r of rows) stav2[r.dum]={stav:r.stav,pozn:r.pozn,kdo:r.kdo,kdy:r.kdy};
+    render();
+  }catch(e){ setSave('stavy offline'); }
+}
+async function nactiKolo1(){
+  try{
+    const rows=await stranky('stavy','dum,stav,pozn');
+    k1={};
+    for(const r of rows) k1[r.dum]={stav:r.stav,pozn:r.pozn};
+    render();
+  }catch(e){}
+}
+async function nactiRezervace(){
+  try{
+    const rows=await stranky('rezervace','dum,kdo,kdy');
+    rez={};
+    for(const r of rows) rez[r.dum]={kdo:r.kdo,kdy:r.kdy};
+    render();
+  }catch(e){}
+}
+async function nactiTypy(){
+  try{
+    const rows=await stranky('typ_objektu','dum,typ,kdo');
+    typy={};
+    for(const r of rows) typy[r.dum]={typ:r.typ,kdo:r.kdo};
+    render();
+  }catch(e){}
+}
+async function nactiZpusoby(){
+  try{
+    const { data, error } = await sb.from('zpusob_vyuziti').select('kod,nazev,kategorie');
+    if(error) throw error;
+    ZPUSOB={};
+    for(const r of (data||[])) ZPUSOB[r.kod]={nazev:r.nazev, kategorie:r.kategorie};
+  }catch(e){}
+}
+async function nactiVse(){
+  setSave('načítám…');
+  await Promise.all([nactiZpusoby(), nactiKolo1(), nactiStavy2(), nactiRezervace(), nactiTypy(), nactiPrzPocty()]);
+  render(); setSave('—');
+}
+
+function subscribeRealtime(){
+  sb.channel('kolo2-live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'stavy2'},p=>{
+      if(p.eventType==='DELETE'){ const k=p.old&&p.old.dum; if(k){ delete stav2[k]; render(); } }
+      else{ const r=p.new; if(r){ stav2[r.dum]={stav:r.stav,pozn:r.pozn,kdo:r.kdo,kdy:r.kdy}; render(); } }
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'rezervace'},p=>{
+      if(p.eventType==='DELETE'){ const k=p.old&&p.old.dum; if(k){ delete rez[k]; render(); } }
+      else{ const r=p.new; if(r){ rez[r.dum]={kdo:r.kdo,kdy:r.kdy}; render(); } }
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'typ_objektu'},p=>{
+      if(p.eventType==='DELETE'){ const k=p.old&&p.old.dum; if(k){ delete typy[k]; render(); } }
+      else{ const r=p.new; if(r){ typy[r.dum]={typ:r.typ,kdo:r.kdo}; render(); } }
+    })
+    .subscribe();
+}
+
+/* ============================================================
+   GEOLOKACE
+   ============================================================ */
+let meMarker=null, meAccuracy=null, meTimer=null;
+function clearMe(){
+  if(meTimer){ clearTimeout(meTimer); meTimer=null; }
+  if(meMarker){ map.removeLayer(meMarker); meMarker=null; }
+  if(meAccuracy){ map.removeLayer(meAccuracy); meAccuracy=null; }
+}
+document.getElementById('gps').onclick=()=>{
+  if(!map) return;
+  if(!navigator.geolocation){ alert('Geolokace není dostupná'); return; }
+  setSave('hledám polohu…');
+  navigator.geolocation.getCurrentPosition(p=>{
+    const {latitude,longitude,accuracy}=p.coords;
+    clearMe();
+    meAccuracy=L.circle([latitude,longitude],{radius:accuracy,color:'#3b9dff',weight:1,
+      fillColor:'#3b9dff',fillOpacity:0.12,interactive:false}).addTo(map);
+    meMarker=L.circleMarker([latitude,longitude],{radius:8,fillColor:'#3b9dff',color:'#fff',
+      weight:2,fillOpacity:1,interactive:false}).addTo(map);
+    map.setView([latitude,longitude],17);
+    setSave('—');
+    meTimer=setTimeout(clearMe,5000);
+  },err=>{ alert('Polohu se nepodařilo zjistit: '+err.message); },
+  {enableHighAccuracy:true,timeout:8000,maximumAge:5000});
+};
+
+/* export pro test nasucho */
+if(typeof module!=='undefined'){ module.exports={key,clenove,visible,jeNN,navrhNN,kProjiti,schranek}; }
+</script>
+</body>
+</html>
