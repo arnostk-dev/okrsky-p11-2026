@@ -154,6 +154,8 @@
 <div class="topbar">
   <span class="brand">Pochůzka P11<small>2. kolo</small></span>
   <span class="who" id="who"></span>
+  <a class="who" href="jak-na-to.html" target="_blank" rel="noopener"
+     style="text-decoration:none" title="Jak appku používat">? jak na to</a>
   <div class="counts" id="counts"></div>
 </div>
 
@@ -370,6 +372,9 @@ function showLegend(){
     '<div class="item"><span class="bul" style="background:transparent;border-color:var(--line)"></span>'+
       '<span class="lbl">◦</span><span class="desc">dva body spojené černou čárkou = jeden dům s adresou do dvou ulic, '+
       'stačí označit jeden</span></div>'+
+    '<div class="item" style="justify-content:center;background:var(--zluta);border-color:var(--zluta)">'+
+      '<a href="jak-na-to.html" target="_blank" rel="noopener" '+
+      'style="color:#000;font-weight:800;text-decoration:none;font-size:15px">Celý návod, jak na to →</a></div>'+
     '<div class="tap">— klikni kamkoli pro zavření —</div>';
   el.onclick=()=>el.remove();
   document.body.appendChild(el);
@@ -653,14 +658,18 @@ function openDom(d,m){
     '</div>'+
     '<div class="pop-meta">'+meta+'</div>'+
     '<div class="pop-clear" data-s="">vymazat stav</div>'+
-    rezHtml + typHtml + przHtml;
+    rezHtml + typHtml + przHtml +
+    '<div class="sek" style="margin-bottom:0"><div class="radek-btn">'+
+      '<button id="popZavrit">Zavřít</button></div></div>';
 
-  /* Popup zůstane otevřený, dokud ho člověk nezavře křížkem nebo neklikne na jiný
-     dům. Dřív ho zavřel i náhodný dotek do mapy, což při chůzi otravovalo. */
+  /* Zavřít se dá třemi způsoby: klepnutím do mapy, tlačítkem Zavřít na konci
+     bubliny (rohový křížek je na mobilu často mimo obrazovku) nebo otevřením
+     jiného domu. Samo od sebe popup nezmizí, o to se stará odložené
+     překreslování mapy, viz otevrenyKlic. */
   m.bindPopup(html,{
-    closeButton:true,      // křížek, aby bylo čím zavřít
-    closeOnClick:false,    // dotek do mapy popup nezavře
-    autoClose:false,       // ani otevření jiného popupu ho nezhasne samo
+    closeButton:true,
+    closeOnClick:true,
+    autoClose:true,
     offset:[0,-4], maxWidth:320
   }).openPopup();
   otevrenyKlic=k;
@@ -725,6 +734,9 @@ function openDom(d,m){
       await pridejPriznivce(k,jm,ko,po);
       map.closePopup();
     };
+    const zav=pop.querySelector('#popZavrit');
+    if(zav) zav.onclick=()=>map.closePopup();
+
     nactiPriznivce(k, pop.querySelector('#przList'));
   },30);
 }

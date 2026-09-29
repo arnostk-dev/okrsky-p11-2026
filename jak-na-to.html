@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roznos letáků P11 — jak na to</title>
+<style>
+  :root{
+    --zluta:#FFF84D; --cerna:#111; --papir:#fff; --seda:#f4f4f2;
+    --line:#dcdcd6; --dim:#5d6167;
+    --a:#36d07a; --aa:#8fb83a; --x:#3b9dff; --n:#9aa0a8; --nn:#4a4f57;
+    --o-hotovo:#5a6068; --o-nedostal:#ff9f40; --o-pustili:#b14ad6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--papir);color:var(--cerna);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    font-size:17px;line-height:1.55;-webkit-text-size-adjust:100%}
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px 64px}
+
+  header{background:var(--cerna);color:var(--zluta);border-bottom:6px solid var(--zluta);
+    padding:18px 0 16px;margin-bottom:22px}
+  header .wrap{padding-bottom:0}
+  header h1{font-size:24px;font-weight:800;letter-spacing:.2px;line-height:1.15}
+  header p{color:#d7d7d2;font-size:14.5px;margin-top:6px}
+
+  h2{font-size:19px;font-weight:800;margin:30px 0 8px;padding-top:14px;border-top:2px solid var(--line);
+    display:flex;align-items:baseline;gap:10px}
+  h2 .cis{background:var(--zluta);color:#000;font-size:14px;padding:1px 9px;border-radius:20px;
+    flex-shrink:0;font-weight:800}
+  h3{font-size:16.5px;font-weight:800;margin:18px 0 5px}
+  p{margin:9px 0}
+  ul,ol{margin:9px 0 9px 22px}
+  li{margin:5px 0}
+  b{font-weight:700}
+  a{color:#0b62c4}
+  .lead{font-size:18px;background:var(--seda);border-left:5px solid var(--zluta);
+    padding:13px 15px;border-radius:0 8px 8px 0;margin:14px 0}
+  .krok{background:var(--seda);border-radius:10px;padding:13px 15px;margin:11px 0}
+  .krok b{display:block;margin-bottom:3px}
+  .tip{border:1px dashed var(--line);border-radius:10px;padding:12px 14px;margin:14px 0;
+    font-size:15.5px;color:var(--dim);background:#fffdf0}
+  .tip b{color:var(--cerna)}
+  .pozor{border-left:5px solid #e8543f;background:#fff5f3;padding:12px 14px;margin:14px 0;border-radius:0 8px 8px 0}
+
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:16px}
+  th{text-align:left;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--dim);
+    padding:5px 8px;border-bottom:2px solid var(--line)}
+  td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  td.tl{width:74px;white-space:nowrap}
+  .tlac{display:inline-block;font-weight:800;font-size:15px;padding:5px 11px;border-radius:9px;
+    border:1px solid var(--line);background:#fff}
+  .tlac.a{background:var(--a);border-color:var(--a);color:#000}
+  .tlac.aa{background:var(--aa);border-color:var(--aa);color:#000}
+  .tlac.x{background:var(--x);border-color:var(--x);color:#000}
+  .tlac.n{background:var(--n);border-color:var(--n);color:#000}
+  .tlac.a1{color:#128a4c;border-color:var(--a)}
+
+  .bod{display:inline-block;vertical-align:-3px;margin-right:7px}
+  .radek-bod{display:flex;align-items:flex-start;gap:4px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .radek-bod:last-child{border-bottom:0}
+  .radek-bod .txt{flex:1}
+  .radek-bod .txt b{display:block}
+  .mala{font-size:14.5px;color:var(--dim)}
+  .btn-odkaz{display:inline-block;background:var(--zluta);color:#000;font-weight:800;
+    padding:13px 20px;border-radius:12px;text-decoration:none;margin:6px 0}
+  footer{margin-top:34px;border-top:2px solid var(--line);padding-top:14px;font-size:14.5px;color:var(--dim)}
+  .obsah{background:var(--seda);border-radius:10px;padding:12px 15px;margin:4px 0 8px}
+  .obsah a{display:block;padding:3px 0;color:#0b62c4;text-decoration:none;font-weight:600}
+  @media print{
+    header{background:#fff;color:#000;border-bottom:3px solid #000}
+    header p{color:#333}
+    h2{page-break-after:avoid}
+    .obsah{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Roznos letáků na Praze 11</h1>
+    <p>Jak používat appku, ve které si zapisujeme, kde už je roznesené. Čtení na pět minut.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<div class="lead">
+  Appka je mapa Prahy 11, ve které je každý dům jeden bod. Ty si v ní zabereš ulici, kterou chceš obejít,
+  a po cestě u každého domu jedním klepnutím zapíšeš, jak to dopadlo. Ostatní to hned vidí,
+  takže nikdo nenosí letáky tam, kde už byly.
+</div>
+
+<div class="obsah">
+  <a href="#zacatek">1. Jak začít (PIN a ikona na ploše)</a>
+  <a href="#zabrat">2. Zaber si, kam půjdeš</a>
+  <a href="#zapis">3. Co zmáčknout u domu</a>
+  <a href="#mapa">4. Co znamenají barvy na mapě</a>
+  <a href="#zvlastni">5. Zvláštní případy</a>
+  <a href="#nejde">6. Když něco nejde</a>
+  <a href="#slusnost">7. Tři pravidla, ať si nelezeme do cesty</a>
+</div>
+
+<h2 id="zacatek"><span class="cis">1</span> Jak začít</h2>
+
+<div class="krok">
+  <b>Otevři odkaz na appku</b>
+  Přišel ti mailem a je i na naší stránce s okrsky. Funguje v každém mobilu, nic se neinstaluje.
+</div>
+<div class="krok">
+  <b>Zadej svůj šestimístný PIN</b>
+  Dostal jsi ho ode mě. Appka si tě zapamatuje, takže ho zadáváš jen jednou.
+  Pokud se ti v rohu ukáže tvoje jméno, jsi vevnitř.
+</div>
+<div class="krok">
+  <b>Přidej si ji na plochu telefonu</b>
+  V Chromu na Androidu: tři tečky vpravo nahoře → <b>Přidat na plochu</b>.
+  Na iPhonu v Safari: ikonka šipky ze čtverečku → <b>Přidat na plochu</b>.
+  Pak se appka otevírá jedním klepnutím jako každá jiná.
+</div>
+
+<p class="mala">PIN je tvůj vstup do databáze kampaně, tak ho prosím neposílej dál a nefoť ho do skupin.
+Kdyby ho někdo viděl, napiš mi a vyrobím ti nový.</p>
+
+<h2 id="zabrat"><span class="cis">2</span> Zaber si, kam půjdeš</h2>
+
+<p>Než vyrazíš, řekni ostatním, kam jdeš, ať tam nejde někdo druhý. V appce se tomu říká rezervace
+a dělá se to klepnutím na dům a potom na <b>Rezervovat</b>.</p>
+
+<p>V tom samém okně máš i dvě tlačítka pro celý úsek:</p>
+<ul>
+  <li><b>Celá ulice</b> zabere všechny domy té ulice v daném okrsku.</li>
+  <li><b>Celý okrsek</b> zabere celý volební okrsek, což je typicky několik desítek domů.</li>
+</ul>
+
+<p>Než se to provede, appka napíše, kolika domů se to týká, takže se nemusíš bát si to zkusit.
+Tvoje rezervace jsou <b>žluté</b>. Když si zapneš dole vlevo <b>Moje</b>, vidíš na mapě jen je,
+a <b>Zbývá</b> ti ukáže jen ty, které z nich ještě nemáš obejité.</p>
+
+<div class="tip">
+  <b>Neber si víc, než dnes obejdeš.</b> Rezervace není závazek na celý týden, klidně si ji po cestě
+  přidávej ulici po ulici. Když dům pustíš, stačí <b>Uvolnit</b>.
+</div>
+
+<h2 id="zapis"><span class="cis">3</span> Co zmáčknout u domu</h2>
+
+<p>Klepni na bod domu a vyber jedno z tlačítek. Do kolonky pod nimi napiš <b>počet schránek</b>,
+pokud ho vidíš, moc nám to pomůže při plánování.</p>
+
+<table>
+  <tr><th>tlačítko</th><th>kdy ho zmáčknout</th></tr>
+  <tr>
+    <td class="tl"><span class="tlac a">A</span></td>
+    <td><b>Vhodil jsem do schránek.</b> Běžný případ, ať už byly schránky venku, nebo ses dostal dovnitř.</td>
+  </tr>
+  <tr>
+    <td class="tl"><span class="tlac a1">A1</span></td>
+    <td><b>Jedna schránka, vhozeno.</b> Zkratka pro rodinné domky: uloží A a zapíše k tomu jedničku,
+        takže nemusíš nic psát.</td>
+  </tr>
+  <tr>
+    <td class="tl"><span class="tlac aa">AA</span></td>
+    <td><b>Bylo zavřeno, ale někdo mě pustil dovnitř.</b> Schránky jsou uvnitř a dnes to vyšlo.
+        Je dobré to vědět, protože příště tam sami nevejdeme.</td>
+  </tr>
+  <tr>
+    <td class="tl"><span class="tlac x">X</span></td>
+    <td><b>Nechal jsem to venku u vchodu.</b> Dovnitř se nedostaneš, tak noviny přidáš k hromádce
+        reklamy u dveří nebo do dírky na letáky ve zdi. Lepší než nic, ale není to plný dům.</td>
+  </tr>
+  <tr>
+    <td class="tl"><span class="tlac n">N</span></td>
+    <td><b>Nedostal jsem se dovnitř a nešlo nechat nic.</b> Zavřeno, schránky vevnitř, nikdo neotevřel.
+        Tenhle dům se bude zkoušet znovu.</td>
+  </tr>
+</table>
+
+<div class="tip">
+  <b>Jak je to s X a N.</b> Když u vchodu leží hromádka reklamy a ty k ní přidáš pár našich novin,
+  je to <b>X</b>. Když jsi odešel s prázdnou, je to <b>N</b>. Rozdíl je důležitý: X už nikdo
+  znovu obcházet nebude, N se pokusíme obejít ještě jednou.
+</div>
+
+<p>Kdyby ses překlepl, otevři dům znovu a zmáčkni jiné tlačítko, nebo dole <b>vymazat stav</b>.
+Nic není nevratné a nikdo se nezlobí.</p>
+
+<h2 id="mapa"><span class="cis">4</span> Co znamenají barvy na mapě</h2>
+
+<p>Bod má tři vrstvy informací. Nemusíš si to pamatovat, v appce je stejná legenda po přihlášení.</p>
+
+<h3>Vnitřek: jak to dopadlo teď</h3>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="#36d07a" stroke="#5a6068" stroke-width="2.5"/></svg>
+  <span class="txt"><b>zelená</b> vhozeno do schránek (A)</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="#8fb83a" stroke="#5a6068" stroke-width="2.5"/></svg>
+  <span class="txt"><b>olivová</b> pustili nás dovnitř (AA)</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="#3b9dff" stroke="#5a6068" stroke-width="2.5"/></svg>
+  <span class="txt"><b>modrá</b> necháno venku u vchodu (X)</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="#9aa0a8" stroke="#5a6068" stroke-width="2.5"/></svg>
+  <span class="txt"><b>šedá</b> nedostali jsme se dovnitř (N)</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="#FFF84D" stroke="#5a6068" stroke-width="2.5"/></svg>
+  <span class="txt"><b>žlutá</b> někdo si dům zabral a ještě tam nebyl. Sytě žlutá je tvoje rezervace, bledší cizí.</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="#fff" fill-opacity="0.35" stroke="#888" stroke-width="2.5"/></svg>
+  <span class="txt"><b>průhledná</b> nikdo tu ještě nebyl a nikdo si dům nezabral</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="5" fill="#4a4f57" stroke="#000" stroke-width="1"/></svg>
+  <span class="txt"><b>malá tmavá</b> nebytový objekt, trafostanice nebo garáž, nechodí se tam</span>
+</div>
+
+<h3>Obrys: co tam bylo v prvním kole</h3>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="none" stroke="#ff9f40" stroke-width="3"/></svg>
+  <span class="txt"><b>oranžový</b> minule se do schránek v domě nedostalo</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="none" stroke="#b14ad6" stroke-width="3"/></svg>
+  <span class="txt"><b>fialový</b> minule nás někdo pustil dovnitř, schránky jsou uvnitř.
+    Tady se vyplatí zazvonit nebo počkat na někoho, kdo jde domů.</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="none" stroke="#5a6068" stroke-width="3"/></svg>
+  <span class="txt"><b>šedý</b> minule bez problémů</span>
+</div>
+
+<h3>Síla obrysu: kolik je v domě schránek</h3>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="none" stroke="#5d6167" stroke-width="1.5"/></svg>
+  <span class="txt">tenký, do 10 schránek, rodinný dům</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="none" stroke="#5d6167" stroke-width="2.5"/></svg>
+  <span class="txt">do 40, menší panelák</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="none" stroke="#5d6167" stroke-width="4"/></svg>
+  <span class="txt">do 80, panelák</span>
+</div>
+<div class="radek-bod">
+  <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="none" stroke="#5d6167" stroke-width="5.5"/></svg>
+  <span class="txt">nad 80, velký panelák. Sem se vyplatí jít, když máš plnou tašku.</span>
+</div>
+
+<p class="mala">Nahoře v liště je přehled: kolik je hotových, kolik jich zůstalo jen u vchodu (X),
+kolik nedostupných (N) a kolik máš zabraných. Číslo se zlomkem je hotovo ku všem domům.</p>
+
+<h2 id="zvlastni"><span class="cis">5</span> Zvláštní případy</h2>
+
+<h3>Dva body spojené čárkou</h3>
+<p>Je to jeden dům, který má vchody do dvou ulic, tedy dvě adresy a jednu sadu schránek.
+Stačí označit jeden bod, druhý se přepíše sám. V okně je napsané, o jakou druhou adresu jde.</p>
+
+<h3>Dům, kde vůbec nejsou schránky</h3>
+<p>Trafostanice, garáž, kotelna, výměník. V okně domu zmáčkni <b>Nebytový (NN)</b> a dům se
+přestane počítat i zobrazovat. Když se spleteš, je tam i <b>Je to dům</b>.</p>
+
+<h3>Když v domě někoho známe</h3>
+<p>Pokud v domě máme příznivce, který je ochotný pustit nás dovnitř nebo vhodit letáky sám,
+dá se do okna domu zapsat jeho jméno a kontakt. Uvidíš ho jen ty u domů, které máš zabrané,
+ostatní se k jeho telefonu nedostanou. Bereme to vážně: jsou to lidé, kteří nám věří, ne kontakty na rozdávání.</p>
+
+<h2 id="nejde"><span class="cis">6</span> Když něco nejde</h2>
+
+<h3>Nemám signál, hlásí to „offline"</h3>
+<p>Klidně pokračuj. Appka si zápisy schová a odešle je sama, jakmile signál naskočí.
+Nic se neztratí, jen to ostatní uvidí s prodlevou.</p>
+
+<h3>Hlásí „spojení spadlo"</h3>
+<p>To se stane, když telefon chvíli spal. Appka se sama připojí a data si dotáhne.
+Když chceš mít jistotu hned, klepni dole na kulaté <b>↻</b>.</p>
+
+<h3>Mapa vypadá jinak, než co jsem zapsal</h3>
+<p>Klepni na <b>↻</b>. Stáhne to aktuální stav včetně toho, co mezitím zapsali ostatní.</p>
+
+<h3>Appka chce PIN, i když jsem se už přihlásil</h3>
+<p>Nejčastěji proto, že prohlížeč vymazal data stránky, nebo používáš anonymní okno.
+Zadej PIN znovu, nic se tím nerozbije.</p>
+
+<h3>Body jsou moc malé, nedaří se mi kliknout</h3>
+<p>Přibliž mapu dvěma prsty. Čím blíž, tím větší rozestupy mezi domy.</p>
+
+<h2 id="slusnost"><span class="cis">7</span> Tři pravidla, ať si nelezeme do cesty</h2>
+
+<ol>
+  <li><b>Zapisuj až podle skutečnosti</b>, ne dopředu a ne z paměti druhý den. Jde o to, aby mapa nelhala.</li>
+  <li><b>Cizí rezervaci respektuj.</b> Když zapisuješ do domu, který má zabraný někdo jiný,
+      appka se zeptá. Není to zákaz, jen ať to není omylem.</li>
+  <li><b>Nejasnosti piš do poznámky</b> u domu, klidně vlastními slovy. Lepší poznámka než tichý odhad.</li>
+</ol>
+
+<div class="pozor">
+  <b>Na co dávat pozor v terénu:</b> do domu se vstupuje jen když ti někdo otevře nebo tě pustí,
+  nikdy se nevloupáváme ani nedržíme dveře. Když někdo nechce naše noviny, poděkuj a jdi dál.
+  Chodit s tím do konfliktu se nevyplatí, ani politicky, ani lidsky.
+</div>
+
+<footer>
+  <p>Něco nefunguje, nebo v mapě vidíš nesmysl? Napiš Arnoštovi Kobylkovi, appku spravuje on.
+  Nejrychleji pomůže, když napíšeš adresu domu a co se stalo.</p>
+</footer>
+
+</div>
+</body>
+</html>
