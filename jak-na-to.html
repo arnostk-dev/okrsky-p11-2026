@@ -9,7 +9,6 @@
     --zluta:#FFF84D; --cerna:#111; --papir:#fff; --seda:#f4f4f2;
     --line:#dcdcd6; --dim:#5d6167;
     --a:#36d07a; --aa:#8fb83a; --x:#3b9dff; --n:#9aa0a8; --nn:#4a4f57;
-    --o-hotovo:#5a6068; --o-nedostal:#ff9f40; --o-pustili:#b14ad6;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--papir);color:var(--cerna);
@@ -61,8 +60,6 @@
   .radek-bod .txt{flex:1}
   .radek-bod .txt b{display:block}
   .mala{font-size:14.5px;color:var(--dim)}
-  .btn-odkaz{display:inline-block;background:var(--zluta);color:#000;font-weight:800;
-    padding:13px 20px;border-radius:12px;text-decoration:none;margin:6px 0}
   footer{margin-top:34px;border-top:2px solid var(--line);padding-top:14px;font-size:14.5px;color:var(--dim)}
   .obsah{background:var(--seda);border-radius:10px;padding:12px 15px;margin:4px 0 8px}
   .obsah a{display:block;padding:3px 0;color:#0b62c4;text-decoration:none;font-weight:600}
@@ -86,14 +83,14 @@
 <div class="wrap">
 
 <div class="lead">
-  Appka je mapa Prahy 11, ve které je každý dům jeden bod. Ty si v ní zabereš ulici, kterou chceš obejít,
-  a po cestě u každého domu jedním klepnutím zapíšeš, jak to dopadlo. Ostatní to hned vidí,
+  Appka je mapa Prahy 11, ve které je každý dům jeden bod. Zaberete si v ní ulici, kterou chcete obejít,
+  a po cestě u každého domu jedním klepnutím zapíšete, jak to dopadlo. Ostatní to hned vidí,
   takže nikdo nenosí letáky tam, kde už byly.
 </div>
 
 <div class="obsah">
   <a href="#zacatek">1. Jak začít (PIN a ikona na ploše)</a>
-  <a href="#zabrat">2. Zaber si, kam půjdeš</a>
+  <a href="#zabrat">2. Zaberte si, kam půjdete</a>
   <a href="#zapis">3. Co zmáčknout u domu</a>
   <a href="#mapa">4. Co znamenají barvy na mapě</a>
   <a href="#zvlastni">5. Zvláštní případy</a>
@@ -104,99 +101,101 @@
 <h2 id="zacatek"><span class="cis">1</span> Jak začít</h2>
 
 <div class="krok">
-  <b>Otevři odkaz na appku</b>
-  Přišel ti mailem a je i na naší stránce s okrsky. <b>Funguje v mobilu i na počítači</b>,
+  <b>Otevřete odkaz na appku</b>
+  Přišel vám mailem a je i na naší stránce s okrsky. <b>Funguje v mobilu i na počítači</b>,
   nic se neinstaluje, stačí prohlížeč.
 </div>
 <div class="krok">
-  <b>Zadej svůj šestimístný PIN</b>
-  Dostal jsi ho ode mě. Appka si tě zapamatuje, takže ho zadáváš jen jednou.
-  Pokud se ti v rohu ukáže tvoje jméno, jsi vevnitř.
+  <b>Zadejte svůj šestimístný PIN</b>
+  Dostali jste ho ode mě. Appka si vás zapamatuje, takže PIN zadáváte jen jednou.
+  Když se vám v horní liště ukáže vaše jméno, jste vevnitř.
 </div>
 <div class="krok">
-  <b>Přidej si ji na plochu telefonu</b>
-  V Chromu na Androidu: tři tečky vpravo nahoře → <b>Přidat na plochu</b>.
+  <b>Přidejte si appku na plochu telefonu</b>
+  V Chromu na Androidu: tři tečky vpravo nahoře → <b>Přidat na plochu</b> (podle verze se položka
+  může jmenovat Přidat na domovskou obrazovku nebo Instalovat aplikaci).
   Na iPhonu v Safari: ikonka šipky ze čtverečku → <b>Přidat na plochu</b>.
   Pak se appka otevírá jedním klepnutím jako každá jiná.
 </div>
 
-<h3>Na počítači i v mobilu, jak se ti to hodí</h3>
-<p>Je to jedna a ta samá appka a přihlašuješ se do ní stejným PINem, takže je jedno,
-odkud se na ni koukáš. Zápisy se sdílí okamžitě, takže co zapíšeš v mobilu, uvidíš doma
+<h3>Na počítači i v mobilu, jak se vám to hodí</h3>
+<p>Je to jedna a ta samá appka a přihlašujete se do ní stejným PINem, takže je jedno,
+odkud se na ni koukáte. Zápisy se sdílí okamžitě, takže co zapíšete v mobilu, uvidíte doma
 na počítači a naopak.</p>
 <p>V praxi se to dělí takhle: <b>na počítači</b> je pohodlnější plánování, protože na velké mapě
-snadno vybereš ulici nebo celý okrsek a zabereš si ho dopředu. <b>Mobil</b> je pak na samotnou
-chůzi, kdy u každého domu klepneš na jedno tlačítko. Kdo počítač nechce, nepotřebuje ho,
+snadno vyberete ulici nebo celý okrsek a zaberete si ho dopředu. <b>Mobil</b> je pak na samotnou
+chůzi, kdy u každého domu klepnete na jedno tlačítko. Kdo počítač nechce, nepotřebuje ho,
 z mobilu jde všechno stejně.</p>
 
-<p class="mala">PIN je tvůj vstup do databáze kampaně, tak ho prosím neposílej dál a nefoť ho do skupin.
-Kdyby ho někdo viděl, napiš mi a vyrobím ti nový.</p>
+<p class="mala">PIN je vstup do databáze kampaně, tak ho prosím neposílejte dál a nefoťte do skupin.
+Kdyby ho někdo cizí viděl, napište mi a vyrobím vám nový.</p>
 
-<h2 id="zabrat"><span class="cis">2</span> Zaber si, kam půjdeš</h2>
+<h2 id="zabrat"><span class="cis">2</span> Zaberte si, kam půjdete</h2>
 
-<p>Než vyrazíš, řekni ostatním, kam jdeš, ať tam nejde někdo druhý. V appce se tomu říká rezervace
-a dělá se to klepnutím na dům a potom na <b>Rezervovat</b>.</p>
+<p>Než vyrazíte, dejte ostatním vědět, kam jdete, ať tam nejde ještě někdo druhý. V appce se tomu
+říká rezervace a dělá se klepnutím na dům a potom na <b>Rezervovat</b>.</p>
 
-<p>V tom samém okně máš i dvě tlačítka pro celý úsek:</p>
+<p>V tom samém okně jsou i dvě tlačítka pro celý úsek:</p>
 <ul>
   <li><b>Celá ulice</b> zabere všechny domy té ulice v daném okrsku.</li>
   <li><b>Celý okrsek</b> zabere celý volební okrsek, což je typicky několik desítek domů.</li>
 </ul>
 
-<p>Než se to provede, appka napíše, kolika domů se to týká, takže se nemusíš bát si to zkusit.
-Tvoje rezervace jsou <b>žluté</b>. Když si zapneš dole vlevo <b>Moje</b>, vidíš na mapě jen je,
-a <b>Zbývá</b> ti ukáže jen ty, které z nich ještě nemáš obejité.</p>
+<p>Než se to provede, appka napíše, kolika domů se to týká, takže se nemusíte bát si to zkusit.
+Vaše rezervace jsou <b>žluté</b>. Když si dole zapnete <b>Moje</b>, vidíte na mapě jen je,
+a <b>Zbývá</b> vám ukáže jen ty, které z nich ještě nemáte obejité.</p>
 
 <div class="tip">
-  <b>Neber si víc, než dnes obejdeš.</b> Rezervace není závazek na celý týden, klidně si ji po cestě
-  přidávej ulici po ulici. Když dům pustíš, stačí <b>Uvolnit</b>.
+  <b>Neberte si víc, než dnes obejdete.</b> Rezervace není závazek na celý týden, klidně si ji
+  po cestě přidávejte ulici po ulici. Když dům pustíte, stačí <b>Uvolnit</b>.
 </div>
 
 <h2 id="zapis"><span class="cis">3</span> Co zmáčknout u domu</h2>
 
-<p>Klepni na bod domu a vyber jedno z tlačítek. Do kolonky pod nimi napiš <b>počet schránek</b>,
-pokud ho vidíš, moc nám to pomůže při plánování.</p>
+<p>Klepněte na bod domu a vyberte jedno z tlačítek. Do kolonky pod nimi napište <b>počet schránek</b>,
+pokud ho vidíte, moc nám to pomůže při plánování.</p>
 
 <table>
   <tr><th>tlačítko</th><th>kdy ho zmáčknout</th></tr>
   <tr>
     <td class="tl"><span class="tlac a">A</span></td>
-    <td><b>Vhodil jsem do schránek.</b> Běžný případ, ať už byly schránky venku, nebo ses dostal dovnitř.</td>
+    <td><b>Vhozeno do schránek.</b> Běžný případ, ať už byly schránky venku, nebo se povedlo
+        dostat dovnitř.</td>
   </tr>
   <tr>
     <td class="tl"><span class="tlac a1">A1</span></td>
     <td><b>Jedna schránka, vhozeno.</b> Zkratka pro rodinné domky: uloží A a zapíše k tomu jedničku,
-        takže nemusíš nic psát.</td>
+        takže nemusíte nic psát.</td>
   </tr>
   <tr>
     <td class="tl"><span class="tlac aa">AA</span></td>
-    <td><b>Bylo zavřeno, ale někdo mě pustil dovnitř.</b> Schránky jsou uvnitř a dnes to vyšlo.
-        Je dobré to vědět, protože příště tam sami nevejdeme.</td>
+    <td><b>Bylo zavřeno, ale někdo vás pustil dovnitř.</b> Schránky jsou uvnitř a dnes to vyšlo.
+        Je dobré to vědět, protože příště se tam sami nedostaneme.</td>
   </tr>
   <tr>
     <td class="tl"><span class="tlac x">X</span></td>
-    <td><b>Nechal jsem to venku u vchodu.</b> Dovnitř se nedostaneš, tak noviny přidáš k hromádce
+    <td><b>Necháno venku u vchodu.</b> Dovnitř se nedostanete, tak noviny přidáte k hromádce
         reklamy u dveří nebo do dírky na letáky ve zdi. Lepší než nic, ale není to plný dům.</td>
   </tr>
   <tr>
     <td class="tl"><span class="tlac n">N</span></td>
-    <td><b>Nedostal jsem se dovnitř a nešlo nechat nic.</b> Zavřeno, schránky vevnitř, nikdo neotevřel.
-        Tenhle dům se bude zkoušet znovu.</td>
+    <td><b>Nepovedlo se dostat dovnitř a nešlo nechat nic.</b> Zavřeno, schránky vevnitř,
+        nikdo neotevřel. Tenhle dům se bude zkoušet znovu.</td>
   </tr>
 </table>
 
 <div class="tip">
-  <b>Jak je to s X a N.</b> Když u vchodu leží hromádka reklamy a ty k ní přidáš pár našich novin,
-  je to <b>X</b>. Když jsi odešel s prázdnou, je to <b>N</b>. Rozdíl je důležitý: X už nikdo
-  znovu obcházet nebude, N se pokusíme obejít ještě jednou.
+  <b>Jak je to s X a N.</b> Když u vchodu leží hromádka reklamy a vy k ní přidáte pár našich novin,
+  je to <b>X</b>. Když odejdete s prázdnou, je to <b>N</b>. Rozdíl je důležitý: X už nikdo znovu
+  obcházet nebude, N se pokusíme obejít ještě jednou.
 </div>
 
-<p>Kdyby ses překlepl, otevři dům znovu a zmáčkni jiné tlačítko, nebo dole <b>vymazat stav</b>.
-Nic není nevratné a nikdo se nezlobí.</p>
+<p>Kdybyste se překlepli, otevřete dům znovu a zmáčkněte jiné tlačítko, nebo dole
+<b>vymazat stav</b>. Nic není nevratné a nikdo se nezlobí.</p>
 
 <h2 id="mapa"><span class="cis">4</span> Co znamenají barvy na mapě</h2>
 
-<p>Bod má tři vrstvy informací. Nemusíš si to pamatovat, v appce je stejná legenda po přihlášení.</p>
+<p>Bod má tři vrstvy informací. Nemusíte si to pamatovat, stejná legenda je v appce po přihlášení.</p>
 
 <h3>Vnitřek: jak to dopadlo teď</h3>
 <div class="radek-bod">
@@ -217,7 +216,7 @@ Nic není nevratné a nikdo se nezlobí.</p>
 </div>
 <div class="radek-bod">
   <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="#FFF84D" stroke="#5a6068" stroke-width="2.5"/></svg>
-  <span class="txt"><b>žlutá</b> někdo si dům zabral a ještě tam nebyl. Sytě žlutá je tvoje rezervace, bledší cizí.</span>
+  <span class="txt"><b>žlutá</b> někdo si dům zabral a ještě tam nebyl. Sytě žlutá je vaše rezervace, bledší cizí.</span>
 </div>
 <div class="radek-bod">
   <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="#fff" fill-opacity="0.35" stroke="#888" stroke-width="2.5"/></svg>
@@ -258,65 +257,68 @@ Nic není nevratné a nikdo se nezlobí.</p>
 </div>
 <div class="radek-bod">
   <svg class="bod" width="26" height="26"><circle cx="13" cy="13" r="8" fill="none" stroke="#5d6167" stroke-width="5.5"/></svg>
-  <span class="txt">nad 80, velký panelák. Sem se vyplatí jít, když máš plnou tašku.</span>
+  <span class="txt">nad 80, velký panelák. Sem se vyplatí jít s plnou taškou.</span>
 </div>
 
 <p class="mala">Nahoře v liště je přehled: kolik je hotových, kolik jich zůstalo jen u vchodu (X),
-kolik nedostupných (N) a kolik máš zabraných. Číslo se zlomkem je hotovo ku všem domům.</p>
+kolik nedostupných (N) a kolik máte zabraných. Číslo se zlomkem je hotovo ku všem domům.</p>
 
 <h2 id="zvlastni"><span class="cis">5</span> Zvláštní případy</h2>
 
 <h3>Dva body spojené čárkou</h3>
 <p>Je to jeden dům, který má vchody do dvou ulic, tedy dvě adresy a jednu sadu schránek.
-Stačí označit jeden bod, druhý se přepíše sám. V okně je napsané, o jakou druhou adresu jde.</p>
+Stačí označit jeden bod, druhý se přepíše sám. V okně domu je napsané, o jakou druhou adresu jde.</p>
 
 <h3>Dům, kde vůbec nejsou schránky</h3>
-<p>Trafostanice, garáž, kotelna, výměník. V okně domu zmáčkni <b>Nebytový (NN)</b> a dům se
-přestane počítat i zobrazovat. Když se spleteš, je tam i <b>Je to dům</b>.</p>
+<p>Trafostanice, garáž, kotelna, výměník. V okně domu zmáčkněte <b>Nebytový (NN)</b> a dům se
+přestane počítat i zobrazovat. Kdybyste se spletli, je tam i <b>Je to dům</b>.</p>
 
 <h3>Když v domě někoho známe</h3>
 <p>Pokud v domě máme příznivce, který je ochotný pustit nás dovnitř nebo vhodit letáky sám,
-dá se do okna domu zapsat jeho jméno a kontakt. Uvidíš ho jen ty u domů, které máš zabrané,
-ostatní se k jeho telefonu nedostanou. Bereme to vážně: jsou to lidé, kteří nám věří, ne kontakty na rozdávání.</p>
+dá se do okna domu zapsat jeho jméno a kontakt. Uvidíte ho jen u domů, které máte zabrané,
+ostatní se k jeho telefonu nedostanou. Bereme to vážně: jsou to lidé, kteří nám věří,
+ne kontakty na rozdávání.</p>
 
 <h2 id="nejde"><span class="cis">6</span> Když něco nejde</h2>
 
 <h3>Nemám signál, hlásí to „offline"</h3>
-<p>Klidně pokračuj. Appka si zápisy schová a odešle je sama, jakmile signál naskočí.
+<p>Klidně pokračujte. Appka si zápisy schová a odešle je sama, jakmile signál naskočí.
 Nic se neztratí, jen to ostatní uvidí s prodlevou.</p>
 
 <h3>Hlásí „spojení spadlo"</h3>
 <p>To se stane, když telefon chvíli spal. Appka se sama připojí a data si dotáhne.
-Když chceš mít jistotu hned, klepni dole na kulaté <b>↻</b>.</p>
+Když chcete mít jistotu hned, klepněte dole na <b>↻</b>.</p>
 
 <h3>Mapa vypadá jinak, než co jsem zapsal</h3>
-<p>Klepni na <b>↻</b>. Stáhne to aktuální stav včetně toho, co mezitím zapsali ostatní.</p>
+<p>Klepněte na <b>↻</b>. Stáhne to aktuální stav včetně toho, co mezitím zapsali ostatní.</p>
 
 <h3>Appka chce PIN, i když jsem se už přihlásil</h3>
-<p>Nejčastěji proto, že prohlížeč vymazal data stránky, nebo používáš anonymní okno.
-Zadej PIN znovu, nic se tím nerozbije.</p>
+<p>Nejčastěji proto, že prohlížeč vymazal data stránky, nebo používáte anonymní okno.
+Zadejte PIN znovu, nic se tím nerozbije.</p>
 
 <h3>Body jsou moc malé, nedaří se mi kliknout</h3>
-<p>Přibliž mapu dvěma prsty. Čím blíž, tím větší rozestupy mezi domy.</p>
+<p>Přibližte mapu dvěma prsty. Čím blíž, tím větší rozestupy mezi domy.</p>
 
 <h2 id="slusnost"><span class="cis">7</span> Tři pravidla, ať si nelezeme do cesty</h2>
 
 <ol>
-  <li><b>Zapisuj až podle skutečnosti</b>, ne dopředu a ne z paměti druhý den. Jde o to, aby mapa nelhala.</li>
-  <li><b>Cizí rezervaci respektuj.</b> Když zapisuješ do domu, který má zabraný někdo jiný,
+  <li><b>Zapisujte podle skutečnosti</b>, ne dopředu a ne z paměti druhý den.
+      Jde o to, aby mapa nelhala.</li>
+  <li><b>Cizí rezervaci respektujte.</b> Když zapisujete do domu, který má zabraný někdo jiný,
       appka se zeptá. Není to zákaz, jen ať to není omylem.</li>
-  <li><b>Nejasnosti piš do poznámky</b> u domu, klidně vlastními slovy. Lepší poznámka než tichý odhad.</li>
+  <li><b>Nejasnosti pište do poznámky</b> u domu, klidně vlastními slovy.
+      Lepší poznámka než tichý odhad.</li>
 </ol>
 
 <div class="pozor">
-  <b>Na co dávat pozor v terénu:</b> do domu se vstupuje jen když ti někdo otevře nebo tě pustí,
-  nikdy se nevloupáváme ani nedržíme dveře. Když někdo nechce naše noviny, poděkuj a jdi dál.
+  <b>Na co dávat pozor v terénu:</b> do domu se vstupuje jen když vám někdo otevře nebo vás pustí,
+  nikdy se nevloupáváme ani nedržíme dveře. Když někdo nechce naše noviny, poděkujte a jděte dál.
   Chodit s tím do konfliktu se nevyplatí, ani politicky, ani lidsky.
 </div>
 
 <footer>
-  <p>Něco nefunguje, nebo v mapě vidíš nesmysl? Napiš Arnoštovi Kobylkovi, appku spravuje on.
-  Nejrychleji pomůže, když napíšeš adresu domu a co se stalo.</p>
+  <p>Něco nefunguje, nebo v mapě vidíte nesmysl? Napište Arnoštovi Kobylkovi, appku spravuje on.
+  Nejrychleji pomůže, když uvedete adresu domu a co se stalo.</p>
 </footer>
 
 </div>
