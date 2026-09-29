@@ -305,7 +305,7 @@ function showLegend(){
     ['#36d07a','A','do schránek, běžně doručeno'],
     ['#8fb83a','AA','zavřeno, ale dostali jsme se dovnitř'],
     ['#36d07a','A1','doručeno, 1 schránka: má smysl u rodinných domků (uloží A a poznámku „1“)'],
-    ['#3b9dff','X','doručeno mimo dům, maximálně do stojanu'],
+    ['#3b9dff','X','necháno venku u vchodu: k hromádce reklamy, do díry na letáky ve stěně, výjimečně do stojanu'],
     ['#9aa0a8','N','nedostal se dovnitř'],
     ['#4a4f57','NN','nebytový objekt, nechodí se tam'],
   ];
@@ -489,12 +489,16 @@ function render(){
       }).addTo(layerZnacky);
     }
   }
+  /* X se nepočítá do hotových: pět novin na hromádce u vchodu není dům se
+     čtyřiceti schránkami. Má proto vlastní dlaždici a do poměru nejde. */
   document.getElementById('counts').innerHTML =
-    '<span class="chip"><span class="dot" style="background:'+VYPLN.A+'"></span>'+(a+aa)+'</span>'+
-    '<span class="chip"><span class="dot" style="background:'+VYPLN.X+'"></span>'+x+'</span>'+
-    '<span class="chip"><span class="dot" style="background:'+VYPLN.N+'"></span>'+n+'</span>'+
-    '<span class="chip" style="color:var(--zluta)">⬤ '+rezMoje+'</span>'+
-    '<span class="chip" style="color:var(--dim)">'+(a+aa+x)+'/'+tot+'</span>';
+    '<span class="chip" title="do schránek (A + AA)"><span class="dot" style="background:'+VYPLN.A+'"></span>'+(a+aa)+'</span>'+
+    '<span class="chip" title="jen venku u vchodu (X), do hotových se nepočítá">'+
+      '<span class="dot" style="background:'+VYPLN.X+'"></span>'+x+'</span>'+
+    '<span class="chip" title="nedostali jsme se dovnitř (N)"><span class="dot" style="background:'+VYPLN.N+'"></span>'+n+'</span>'+
+    '<span class="chip" style="color:var(--zluta)" title="moje rezervace">⬤ '+rezMoje+'</span>'+
+    '<span class="chip" style="color:var(--dim)" title="domů se schránkami hotovo z celku, X v tom není">'+
+      (a+aa)+'/'+tot+'</span>';
 }
 
 /* ============================================================
@@ -515,7 +519,7 @@ function openDom(d,m){
   /* co o domě víme: 1. kolo + registr */
   const s1=k1[k]||{}; const sch=schranek(d);
   const K1TXT={A:'vhozeno zvenku',AA:'pustili nás dovnitř',
-               X:'doručeno mimo dům, max. do stojanu',N:'nedostali jsme se dovnitř'};
+               X:'necháno venku u vchodu',N:'nedostali jsme se dovnitř'};
   const K1BAR={A:'#5a6068',AA:'#b14ad6',X:'#ff9f40',N:'#ff9f40'};
   let vime='<div class="pop-vime">';
   vime += '<div class="radek">1. kolo: '+(s1.stav
