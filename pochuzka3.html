@@ -304,14 +304,13 @@ function showLegend(){
   const stavy=[
     ['#36d07a','A','do schránek, běžně doručeno'],
     ['#8fb83a','AA','zavřeno, ale dostali jsme se dovnitř'],
-    ['#36d07a','A1','doručeno, 1 schránka (uloží A + poznámku „1“)'],
-    ['#3b9dff','X','stojan / nedoručeno'],
+    ['#36d07a','A1','doručeno, 1 schránka: má smysl u rodinných domků (uloží A a poznámku „1“)'],
+    ['#3b9dff','X','doručeno mimo dům, maximálně do stojanu'],
     ['#9aa0a8','N','nedostal se dovnitř'],
     ['#4a4f57','NN','nebytový objekt, nechodí se tam'],
   ];
   const obrysy=[
-    ['#ff9f40','N','minule se tam nikdo nedostal'],
-    ['#ff4d4d','X','minule stojan / nedoručeno'],
+    ['#ff9f40','N, X','minule se do schránek v domě nedostalo (nikdo neotevřel, nebo jen stojan)'],
     ['#b14ad6','AA','minule nás někdo pustil dovnitř (schránky jsou vevnitř)'],
     ['#5a6068','A','minule bez problému'],
     ['#ffffff','—','v 1. kole bez záznamu'],
@@ -324,8 +323,8 @@ function showLegend(){
     '<span class="lbl">'+l+'</span><span class="desc">'+d+'</span></div>').join('');
   const sily=[
     [1.5,'do 10','rodinný dům, pár schránek'],
-    [2.5,'10 až 40','menší dům'],
-    [4,'40 až 80','panelák'],
+    [2.5,'do 40','menší panelák'],
+    [4,'do 80','panelák'],
     [5.5,'nad 80','velký panelák, vyplatí se domluvit vstup'],
   ];
   const r3=sily.map(([w,l,d])=>
@@ -333,14 +332,14 @@ function showLegend(){
     '<span class="lbl" style="font-size:13px">'+l+'</span><span class="desc">'+d+'</span></div>').join('');
   const el=document.createElement('div');
   el.className='legend';
-  el.innerHTML='<h2>Legenda</h2><div class="sub">Výplň bodu je letošní stav, barva obrysu je to, co víme z prvního kola, '+
+  el.innerHTML='<h2>Legenda</h2><div class="sub">Výplň bodu je aktuální stav, barva obrysu je to, co víme z prvního kola, '+
     'a síla obrysu říká, kolik je v domě schránek.</div>'+
-    '<div class="grp-h">Výplň: letošní stav</div>'+r1+
+    '<div class="grp-h">Výplň: aktuální stav</div>'+r1+
     '<div class="grp-h">Barva obrysu: co bylo v 1. kole</div>'+r2+
     '<div class="grp-h">Síla obrysu: kolik schránek</div>'+r3+
     '<div class="grp-h">Ostatní značky</div>'+
     '<div class="item"><span class="bul" style="background:#FFF84D;border-color:#000"></span>'+
-      '<span class="lbl">R</span><span class="desc">žlutý vnitřek = dům je rezervovaný a ještě nemá letošní stav '+
+      '<span class="lbl">R</span><span class="desc">žlutý vnitřek = dům je rezervovaný a ještě nemá aktuální stav '+
       '(sytě moje rezervace, bledě cizí, čí je, říká popup)</span></div>'+
     '<div class="item"><span class="bul" style="background:transparent;border-color:transparent">★</span>'+
       '<span class="lbl"></span><span class="desc">hvězdička = v domě máme příznivce</span></div>'+
@@ -358,7 +357,8 @@ function showLegend(){
 let map, layer, layerZnacky, markerByKey={}, filter='moje';
 
 const VYPLN={N:'#9aa0a8',A:'#36d07a',X:'#3b9dff',AA:'#8fb83a',none:'#ffffff',NN:'#4a4f57',R:'#FFF84D'};
-const OBRYS={A:'#5a6068',AA:'#b14ad6',X:'#ff4d4d',N:'#ff9f40',none:'#ffffff'};
+/* U minulých stavů mají X a N jednu barvu: v obou případech se do schránek v domě nedostalo. */
+const OBRYS={A:'#5a6068',AA:'#b14ad6',X:'#ff9f40',N:'#ff9f40',none:'#ffffff'};
 
 /* Počet schránek nese SÍLA vnějšího kroužku, ne velikost bodu.
    Meze 10 / 40 / 80: rodinný dům, menší bytovka, panelák, velký panelák. */
@@ -466,7 +466,7 @@ function render(){
 
     const nnD = jeNN(d);
     const sch = schranek(d).n;
-    // Rezervace = žlutý vnitřek, ale jen dokud dům nemá letošní stav.
+    // Rezervace = žlutý vnitřek, ale jen dokud dům nemá aktuální stav.
     // Jakmile stav má, vyhrává stav a rezervace se řeší v popupu.
     const zluta = !s && !!rezOf(k);
     const m=L.circleMarker([d.lat,d.lon],{
@@ -514,8 +514,9 @@ function openDom(d,m){
 
   /* co o domě víme: 1. kolo + registr */
   const s1=k1[k]||{}; const sch=schranek(d);
-  const K1TXT={A:'vhozeno zvenku',AA:'pustili nás dovnitř',X:'stojan / nedoručeno',N:'nedostali jsme se'};
-  const K1BAR={A:'#5a6068',AA:'#b14ad6',X:'#ff4d4d',N:'#ff9f40'};
+  const K1TXT={A:'vhozeno zvenku',AA:'pustili nás dovnitř',
+               X:'doručeno mimo dům, max. do stojanu',N:'nedostali jsme se dovnitř'};
+  const K1BAR={A:'#5a6068',AA:'#b14ad6',X:'#ff9f40',N:'#ff9f40'};
   let vime='<div class="pop-vime">';
   vime += '<div class="radek">1. kolo: '+(s1.stav
       ? '<span class="k1" style="color:'+K1BAR[s1.stav]+'">'+s1.stav+'</span> '+(K1TXT[s1.stav]||'')
