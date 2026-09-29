@@ -183,6 +183,7 @@ const DATA_URL     = 'domy2.json';
 const LS_PIN   = 'pochuzka2_p11_pin';
 const LS_NAME  = 'pochuzka2_p11_jmeno';
 const LS_QUEUE = 'pochuzka2_p11_fronta';
+const LS_SPR   = 'pochuzka2_p11_spravce';
 
 const PIN_DELKA = 6;    // 2. kolo ma 6mistne PINy (1. kolo melo 4mistne)
 
@@ -191,7 +192,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 let DOMY = [];
-let PIN = null, JMENO = null;
+let PIN = null, JMENO = null, SPRAVCE = false;   // filtr Kontrola je jen pro správce
 
 /* klíč domu: ulice|okrsek|čp|label (bez ulice není unikátní) */
 function key(d){ return d.ul+'|'+d.ok+'|'+String(d.cd)+'|'+d.label; }
@@ -242,12 +243,17 @@ async function submitPin(){
       return;
     }
     PIN=pin; JMENO=jmeno;
-    try{ localStorage.setItem(LS_PIN,pin); localStorage.setItem(LS_NAME,jmeno); }catch(e){}
+    try{ localStorage.setItem(LS_PIN,pin); localStorage.setItem(LS_NAME,jmeno);
+         localStorage.setItem(LS_SPR, SPRAVCE?'1':'0'); }catch(e){}
     startApp();
   }catch(e){
     const cachePin = localStorage.getItem(LS_PIN);
     const cacheName = localStorage.getItem(LS_NAME);
-    if(cachePin===pin && cacheName){ PIN=pin; JMENO=cacheName; startApp(true); }
+    if(cachePin===pin && cacheName){
+      PIN=pin; JMENO=cacheName;
+      SPRAVCE = localStorage.getItem(LS_SPR)==='1';   // bez signálu věříme paměti
+      startApp(true);
+    }
     else{
       pinErr.textContent='Bez signálu a PIN není v paměti';
       pinInputs.forEach(i=>i.disabled=false);
@@ -258,6 +264,13 @@ async function submitPin(){
 async function overPin(pin){
   const { data, error } = await sb.rpc('over_pin2',{ p_pin: pin });
   if(error) throw error;
+  if(data){
+    // jsem správce? podle toho se ukáže nebo schová filtr Kontrola
+    try{
+      const { data:s } = await sb.rpc('je_spravce',{ p_pin: pin });
+      SPRAVCE = !!s;
+    }catch(e){ SPRAVCE = false; }
+  }
   return data;
 }
 (function tryAutoLogin(){
@@ -275,6 +288,13 @@ function startApp(offline){
   if(started) return; started=true;
   gate.style.display='none';
   document.getElementById('who').textContent='👤 '+JMENO;
+  // Kontrolní seznam objektů je koordinátorská práce, ostatním ho neukazujeme.
+  // Označit dům jako nebytový může v popupu kdokoli, to zůstává všem.
+  if(!SPRAVCE){
+    document.querySelectorAll('#filter button').forEach(b=>{
+      if(b.getAttribute('data-f')==='kontrola') b.style.display='none';
+    });
+  }
   showLegend();
 
   fetch(DATA_URL)
