@@ -432,7 +432,9 @@ function schranek(d){
 
 function visible(d){
   const k=key(d);
-  if(filter==='kontrola') return kProjiti(d) || navrhNN(d);
+  // Kontrola ukazuje jen to, co ještě nikdo nerozhodl. Jak dům dostane
+  // verdikt (BYT nebo NN), ze seznamu zmizí.
+  if(filter==='kontrola') return !typOf(d) && (kProjiti(d) || navrhNN(d));
   if(jeNN(d) && filter!=='vse') return false;
   if(filter==='moje')  return mojeRez(k);
   if(filter==='zbyva'){ const s=stOf(k); return mojeRez(k) && s!=='A' && s!=='X' && s!=='AA'; }
@@ -452,7 +454,7 @@ function render(){
         {color:'#000',weight:2,opacity:.75,interactive:false}).addTo(layer);
   }
 
-  let n=0,a=0,x=0,aa=0,tot=0,rezMoje=0,nn=0;
+  let n=0,a=0,x=0,aa=0,tot=0,rezMoje=0,nn=0,kzbyva=0;
   for(const d of DOMY){
     const k=key(d);
     const s=stOf(k);
@@ -463,6 +465,7 @@ function render(){
       if(mojeRez(k)) rezMoje++;
     }
     if(hlavni && jeNN(d)) nn++;
+    if(hlavni && !typOf(d) && (kProjiti(d) || navrhNN(d))) kzbyva++;
     if(!visible(d)) continue;
 
     const nnD = jeNN(d);
@@ -499,7 +502,11 @@ function render(){
     '<span class="chip" title="nedostali jsme se dovnitř (N)"><span class="dot" style="background:'+VYPLN.N+'"></span>'+n+'</span>'+
     '<span class="chip" style="color:var(--zluta)" title="moje rezervace">⬤ '+rezMoje+'</span>'+
     '<span class="chip" style="color:var(--dim)" title="domů se schránkami hotovo z celku, X v tom není">'+
-      (a+aa)+'/'+tot+'</span>';
+      (a+aa)+'/'+tot+'</span>'+
+    (filter==='kontrola'
+      ? '<span class="chip" style="color:var(--zluta)" title="domů, které ještě nikdo nerozhodl">'+
+        'k rozhodnutí '+kzbyva+'</span>'
+      : '');
 }
 
 /* ============================================================
