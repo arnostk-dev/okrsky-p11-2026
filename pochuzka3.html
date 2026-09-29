@@ -162,6 +162,7 @@
     <button data-f="kontrola">Kontrola</button>
   </div>
   <button class="gps" id="gps">📍 Já</button>
+  <button id="obnovit" title="načíst znovu stavy, rezervace a typy ze serveru">↻</button>
   <span class="save-state" id="savestate">—</span>
 </div>
 
@@ -511,9 +512,16 @@ function openDom(d,m){
   const meta = rec.kdo? (rec.kdo+(rec.kdy?' · '+fmtKdy(rec.kdy):'')) : '';
   const poznVal = (rec.pozn||'').replace(/"/g,'&quot;');
   const cl = clenove(d);
+  /* U domu s adresou do dvou ulic je vidět, co má ta druhá adresa zapsáno,
+     aby šlo zkontrolovat, že se zápis propsal na obě. */
+  const stavyCl = cl.map(y=>stOf(key(y)));
+  const rozdil = stavyCl.some(x=>x!==stavyCl[0]);
   const grpInfo = cl.length>1
-    ? '<div class="pop-grp">též '+cl.filter(y=>y!==d).map(y=>y.ul+' '+y.label).join(' · ')+
-      '<span>jeden dům, zapíše se na '+cl.length+' adresy</span></div>'
+    ? '<div class="pop-grp">též '+cl.filter(y=>y!==d).map(y=>
+        y.ul+' '+y.label+(stOf(key(y))? ' <b>'+stOf(key(y))+'</b>' : ' <b>bez stavu</b>')).join(' · ')+
+      '<span>jeden dům, zapíše se na '+cl.length+' adresy</span>'+
+      (rozdil? '<span style="color:#ff9f40">adresy nemají stejný stav, klikni na stav znovu a srovná se to</span>':'')+
+      '</div>'
     : '';
 
   /* co o domě víme: 1. kolo + registr */
@@ -967,8 +975,10 @@ async function nactiVse(){
   render(); setSave('—');
 }
 
+let kanal=null;
 function subscribeRealtime(){
-  sb.channel('kolo2-live')
+  if(kanal){ try{ sb.removeChannel(kanal); }catch(e){} kanal=null; }
+  kanal = sb.channel('kolo2-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'stavy2'},p=>{
       if(p.eventType==='DELETE'){ const k=p.old&&p.old.dum; if(k){ delete stav2[k]; render(); } }
       else{ const r=p.new; if(r){ stav2[r.dum]={stav:r.stav,pozn:r.pozn,kdo:r.kdo,kdy:r.kdy}; render(); } }
@@ -981,8 +991,25 @@ function subscribeRealtime(){
       if(p.eventType==='DELETE'){ const k=p.old&&p.old.dum; if(k){ delete typy[k]; render(); } }
       else{ const r=p.new; if(r){ typy[r.dum]={typ:r.typ,kdo:r.kdo}; render(); } }
     })
-    .subscribe();
+    .subscribe(status=>{
+      // Na mobilu spojeni pri chuzi a uspani telefonu pada. Kdyz kanal spadne,
+      // prihlasime se znovu a data dotahneme, aby se nepracovalo se starym obrazem.
+      if(status==='SUBSCRIBED') setSave('—');
+      else if(status==='CHANNEL_ERROR' || status==='TIMED_OUT' || status==='CLOSED'){
+        setSave('spojení spadlo');
+        setTimeout(()=>{ if(started && navigator.onLine){ subscribeRealtime(); nactiVse(); } }, 3000);
+      }
+    });
 }
+
+/* Návrat k telefonu po uspání: socket je mezitím většinou mrtvý, tak se
+   podíváme na server znovu a odešleme, co zůstalo ve frontě. */
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && started && navigator.onLine){
+    nactiVse(); flushQueue(); subscribeRealtime();
+  }
+});
+document.getElementById('obnovit').onclick=()=>{ nactiVse(); flushQueue(); };
 
 /* ============================================================
    GEOLOKACE
