@@ -425,6 +425,8 @@ function initMap(){
       otevrenyKlic=null; renderOdlozen=false;
       document.querySelectorAll('#filter button').forEach(x=>x.classList.remove('on'));
       b.classList.add('on'); filter=b.getAttribute('data-f'); render();
+      if(filter==='moje' && !maMojeRez())
+        oznameni('Zatím nemáš rezervovaný žádný dům, proto je mapa prázdná. Přepni na „Vše“ a dům si rezervuj v jeho okénku.');
     };
   });
   render();
@@ -434,6 +436,28 @@ function stOf(k){ return (stav2[k]&&stav2[k].stav)||''; }
 function k1Of(k){ return (k1[k]&&k1[k].stav)||''; }
 function rezOf(k){ return rez[k]&&rez[k].kdo; }
 function mojeRez(k){ return rezOf(k)===JMENO; }
+function maMojeRez(){ for(const k in rez) if(rez[k] && rez[k].kdo===JMENO) return true; return false; }
+
+/* Kdo ještě nemá žádnou rezervaci, by ve filtru Moje viděl prázdnou mapu
+   a myslel by si, že appka nefunguje. Proto se po prvním načtení přepne na Vše. */
+function prepniFiltr(f){
+  filter=f;
+  document.querySelectorAll('#filter button').forEach(x=>{
+    if(x.getAttribute('data-f')===f) x.classList.add('on'); else x.classList.remove('on');
+  });
+  render();
+}
+function oznameni(text){
+  const el=document.createElement('div');
+  el.textContent=text;
+  el.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:3000;'+
+    'max-width:min(90vw,420px);background:#222;color:#fff;border:1px solid #FFF84D;border-radius:10px;'+
+    'padding:10px 14px;font-size:14px;line-height:1.35;box-shadow:0 4px 14px rgba(0,0,0,.4)';
+  el.onclick=()=>el.remove();
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),7000);
+}
+let autoVseHotovo=false;
 
 /* typ objektu: verdikt člověka vyhrává, jinak návrh z registru */
 function typOf(d){
@@ -462,9 +486,19 @@ function kProjiti(d){
 
 /* odhad počtu schránek: co lidi napsali v 1. kole, jinak počet bytů z registru */
 function schranek(d){
+  /* Číslo, které roznašeč napsal do poznámky ve 2. kole, je nejčerstvější počítání.
+     Stejná pojistka proti „1“ jako značce platí i tady. */
+  const p2=(stav2[key(d)]&&stav2[key(d)].pozn)||'';
+  const m2=/\d+/.exec(p2);
+  const n2 = m2 ? parseInt(m2[0],10) : null;
+  if(n2 && !(n2<=2 && (d.bytyA||0)>=4)) return {n:n2, zdroj:'2. kolo'};
   const p=(k1[key(d)]&&k1[key(d)].pozn)||'';
   const m=/\d+/.exec(p);
-  if(m) return {n:parseInt(m[0],10), zdroj:'1. kolo'};
+  /* V 1. kole se do poznámky občas psalo „1“ jen jako značka, ne počet schránek.
+     U rodinného domu to sedí, u bytovky ne: když registr říká 4 a víc bytů,
+     malé číslo (1 nebo 2) z 1. kola se ignoruje a platí registr. */
+  const n1 = m ? parseInt(m[0],10) : null;
+  if(n1 && !(n1<=2 && (d.bytyA||0)>=4)) return {n:n1, zdroj:'1. kolo'};
   if(d.sch) return {n:d.sch, zdroj:'sčítání zvenku'};
   if(d.bytyA) return {n:d.bytyA, zdroj:'RÚIAN'};
   return {n:null, zdroj:null};
@@ -496,6 +530,8 @@ function render(){
   }
 
   let n=0,a=0,x=0,aa=0,tot=0,rezMoje=0,nn=0,kzbyva=0;
+  // statistika schránek: rozneseno (A, AA; X se nepočítá) / rezervováno (vč. roznesených) / celkem
+  let schRoz=0, schRez=0, schTot=0, schMojeRoz=0, schMojeRez=0;
   for(const d of DOMY){
     const k=key(d);
     const s=stOf(k);
@@ -504,6 +540,12 @@ function render(){
       tot++;
       if(s==='N')n++; else if(s==='A')a++; else if(s==='X')x++; else if(s==='AA')aa++;
       if(mojeRez(k)) rezMoje++;
+      const ns = schranek(d).n || 0;
+      const hotovo = (s==='A'||s==='AA');
+      schTot += ns;
+      if(hotovo) schRoz += ns;
+      if(rezOf(k)) schRez += ns;
+      if(mojeRez(k)){ schMojeRez += ns; if(hotovo) schMojeRoz += ns; }
     }
     if(hlavni && jeNN(d)) nn++;
     if(hlavni && !typOf(d) && (kProjiti(d) || navrhNN(d))) kzbyva++;
@@ -544,10 +586,22 @@ function render(){
     '<span class="chip" style="color:var(--zluta)" title="moje rezervace">⬤ '+rezMoje+'</span>'+
     '<span class="chip" style="color:var(--dim)" title="domů se schránkami hotovo z celku, X v tom není">'+
       (a+aa)+'/'+tot+'</span>'+
+    statChip(schRoz,schRez,schTot,schMojeRoz,schMojeRez)+
     (filter==='kontrola'
       ? '<span class="chip" style="color:var(--zluta)" title="domů, které ještě nikdo nerozhodl">'+
         'k rozhodnutí '+kzbyva+'</span>'
       : '');
+}
+
+/* Dlaždice se schránkami. Ve filtrech Moje a Zbývá jen moje rezervace,
+   jinak celá Praha 11. Čísla jsou odhad (viz schranek()), proto „~“. */
+function cislo(n){ return Math.round(n).toLocaleString('cs-CZ'); }
+function statChip(roz,rez,tot,mRoz,mRez){
+  if(filter==='moje' || filter==='zbyva')
+    return '<span class="chip" title="moje rezervace: schránek roznesených (A, AA) / ve všech mých rezervovaných domech">'+
+      '📬 moje ~'+cislo(mRoz)+' / '+cislo(mRez)+'</span>';
+  return '<span class="chip" title="schránek: roznesených (A, AA, bez X) / v rezervovaných domech / celkem na Praze 11 (odhad)">'+
+    '📬 ~'+cislo(roz)+' / '+cislo(rez)+' / '+cislo(tot)+'</span>';
 }
 
 /* ============================================================
@@ -1045,6 +1099,13 @@ async function nactiVse(){
   setSave('načítám…');
   await Promise.all([nactiZpusoby(), nactiKolo1(), nactiStavy2(), nactiRezervace(), nactiTypy(), nactiPrzPocty()]);
   render(); setSave('—');
+  if(!autoVseHotovo){
+    autoVseHotovo=true;
+    if(filter==='moje' && !maMojeRez()){
+      prepniFiltr('vse');
+      oznameni('Zatím nemáš rezervovaný žádný dům, tak ukazuji všechny. Klepni na dům a rezervuj si ho, pak ho najdeš i pod „Moje“.');
+    }
+  }
 }
 
 let kanal=null;
