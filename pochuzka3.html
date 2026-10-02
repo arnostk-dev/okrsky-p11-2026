@@ -163,6 +163,7 @@
   <div class="seg" id="filter">
     <button data-f="moje" class="on">Moje</button>
     <button data-f="zbyva">Zbývá</button>
+    <button data-f="prizn" title="moje rezervované domy, kde máme příznivce">★</button>
     <button data-f="vse">Vše</button>
     <button data-f="kontrola">Kontrola</button>
   </div>
@@ -425,6 +426,8 @@ function initMap(){
       otevrenyKlic=null; renderOdlozen=false;
       document.querySelectorAll('#filter button').forEach(x=>x.classList.remove('on'));
       b.classList.add('on'); filter=b.getAttribute('data-f'); render();
+      if(filter==='prizn' && !Object.keys(przPocty).some(k=>mojeRez(k)))
+        oznameni('V domech, které máš rezervované, zatím nemáme žádného příznivce. Hvězdičku uvidíš u domu, až si ho zarezervuješ.');
       if(filter==='moje' && !maMojeRez())
         oznameni('Zatím nemáš rezervovaný žádný dům, proto je mapa prázdná. Přepni na „Vše“ a dům si rezervuj v jeho okénku.');
     };
@@ -511,6 +514,8 @@ function visible(d){
   if(filter==='kontrola') return !typOf(d) && (kProjiti(d) || navrhNN(d));
   if(jeNN(d) && filter!=='vse') return false;
   if(filter==='moje')  return mojeRez(k);
+  // Příznivci: jen MOJE rezervované domy s příznivcem. Server cizí počty ani neposílá.
+  if(filter==='prizn') return mojeRez(k) && !!przPocty[k];
   if(filter==='zbyva'){ const s=stOf(k); return mojeRez(k) && s!=='A' && s!=='X' && s!=='AA'; }
   return true;
 }
@@ -559,7 +564,7 @@ function render(){
     const m=L.circleMarker([d.lat,d.lon],{
       radius: nnD ? R_NN : R_BOD,
       fillColor: nnD ? VYPLN.NN : (s ? VYPLN[s] : (zluta ? VYPLN.R : VYPLN.none)),
-      color: nnD ? '#000' : (OBRYS[k1Of(k)] || OBRYS.none),
+      color: nnD ? '#000' : (OBRYS[k1Of(k)] || (d.ven ? OBRYS.A : OBRYS.none)),   // d.ven = schránky zvenku podle seznamu
       weight: nnD ? 1 : silaObrysu(sch),
       fillOpacity: nnD ? .55 : (s ? 0.95 : (zluta ? (mojeRez(k)?0.95:0.5) : 0.35))
     });
@@ -571,8 +576,8 @@ function render(){
     if(przPocty[k] && mojeRez(k)){
       L.marker([d.lat,d.lon],{
         interactive:false,
-        icon:L.divIcon({className:'',html:'<div style="font-size:15px;line-height:1;color:#FFD34D;'+
-          'text-shadow:0 0 3px #000;transform:translate(-50%,-160%)">★</div>',iconSize:[0,0]})
+        icon:L.divIcon({className:'',html:'<div style="font-size:22px;line-height:1;color:#FFD34D;'+
+          'text-shadow:0 0 2px #000,0 0 4px #000,0 0 6px #000;transform:translate(-50%,-130%)">★</div>',iconSize:[0,0]})
       }).addTo(layerZnacky);
     }
   }
@@ -597,7 +602,7 @@ function render(){
    jinak celá Praha 11. Čísla jsou odhad (viz schranek()), proto „~“. */
 function cislo(n){ return Math.round(n).toLocaleString('cs-CZ'); }
 function statChip(roz,rez,tot,mRoz,mRez){
-  if(filter==='moje' || filter==='zbyva')
+  if(filter==='moje' || filter==='zbyva' || filter==='prizn')
     return '<span class="chip" title="moje rezervace: schránek roznesených (A, AA) / ve všech mých rezervovaných domech">'+
       '📬 moje ~'+cislo(mRoz)+' / '+cislo(mRez)+'</span>';
   return '<span class="chip" title="schránek: roznesených (A, AA, bez X) / v rezervovaných domech / celkem na Praze 11 (odhad)">'+
@@ -636,6 +641,7 @@ function openDom(d,m){
       ? '<span class="k1" style="color:'+K1BAR[s1.stav]+'">'+s1.stav+'</span> '+(K1TXT[s1.stav]||'')
         +(s1.pozn?' · <b>'+s1.pozn+'</b>':'')
       : 'bez záznamu')+'</div>';
+  if(d.ven && s1.stav!=='A') vime += '<div class="radek">schránky <b>zvenku</b> <span style="font-size:11px">(podle seznamu)</span></div>';
   if(sch.n) vime += '<div class="radek">schránek: <b>'+sch.n+'</b> <span style="font-size:11px">('+sch.zdroj+')</span></div>';
   const zp = d.ru && ZPUSOB[d.ru] ? ZPUSOB[d.ru].nazev : null;
   if(zp || d.podl || d.byty){
@@ -898,6 +904,9 @@ async function rezervuj(dumy){
     setSave(t);
     if(nelze.length) alert(nelze.length+' už hotových domů (A/AA) nelze přerezervovat. Zbytek zabrán.');
     nactiRezervace();
+    // Server posílá počty příznivců jen pro moje rezervace, takže po rezervaci je načíst znovu,
+    // jinak by se hvězdička objevila až po obnovení stránky.
+    nactiPrzPocty().then(render);
   }catch(e){
     queuePush({typ:'rezervuj', dumy:dumy}); setSave('offline – ve frontě');
   }
@@ -1118,7 +1127,9 @@ function subscribeRealtime(){
     })
     .on('postgres_changes',{event:'*',schema:'public',table:'rezervace'},p=>{
       if(p.eventType==='DELETE'){ const k=p.old&&p.old.dum; if(k){ delete rez[k]; render(); } }
-      else{ const r=p.new; if(r){ rez[r.dum]={kdo:r.kdo,kdy:r.kdy}; render(); } }
+      else{ const r=p.new; if(r){ rez[r.dum]={kdo:r.kdo,kdy:r.kdy}; render();
+        // automatická rezervace při zápisu stavu přijde jen realtimem
+        if(r.kdo===JMENO) nactiPrzPocty().then(render); } }
     })
     .on('postgres_changes',{event:'*',schema:'public',table:'typ_objektu'},p=>{
       if(p.eventType==='DELETE'){ const k=p.old&&p.old.dum; if(k){ delete typy[k]; render(); } }
