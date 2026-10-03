@@ -68,6 +68,8 @@
   .stav-row2 button{flex:1;justify-content:center;font-size:14px;min-height:44px;font-weight:800}
   .sb-aa{color:#a8cc5a}
   .sb-a1{color:var(--a)}
+  .sb-nn{color:#c9ced6}
+  .sb-nn.on{background:#4a4f57;color:#fff;border-color:#000}
   .pop-pozn{display:flex;gap:6px;margin-bottom:9px}
   .pop-pozn input{flex:1;background:#0d0f12;border:1px solid var(--line);border-radius:10px;
     color:var(--text);font-family:inherit;font-size:14px;padding:9px 10px;min-width:0}
@@ -712,6 +714,7 @@ function openDom(d,m){
     '<div class="stav-row2">'+
       '<button class="sb-aa '+(cur==='AA'?'on':'')+'" data-s="AA">AA</button>'+
       '<button class="sb-a1" data-a1="1">A1</button>'+
+      '<button class="sb-nn '+(jeNN(d)?'on':'')+'" data-nn="1" title="nebytový objekt, sem se nenosí">NN</button>'+
     '</div>'+
     '<div class="pop-pozn">'+
       '<input id="poznIn" maxlength="50" placeholder="poznámka (počet schránek…)" value="'+poznVal+'">'+
@@ -743,13 +746,22 @@ function openDom(d,m){
       b.onclick=()=>{
         const v=b.getAttribute('data-s');
         const pozn=(pop.querySelector('#poznIn').value||'').trim().slice(0,50);
+        zrusNN(d,k);
         setStav(d,k,v,pozn||null); map.closePopup();
       };
     });
+    /* NN jako běžné tlačítko vedle stavů. Jakýkoli jiný stav ho zase zruší. */
+    const nnB=pop.querySelector('[data-nn]');
+    if(nnB) nnB.onclick=()=>{
+      if(jeNN(d)) setTyp(d,k,'BYT');      // druhé klepnutí NN vypne
+      else setTyp(d,k,'NN');
+      map.closePopup();
+    };
     const a1=pop.querySelector('[data-a1]');
     if(a1) a1.onclick=()=>{
       const c=(pop.querySelector('#poznIn').value||'').trim();
       let np = !c ? '1' : (c==='1' ? '1' : '1, '+c);
+      zrusNN(d,k);
       setStav(d,k,'A',np.slice(0,50)); map.closePopup();
     };
     const sv=pop.querySelector('#poznSave');
@@ -758,7 +770,7 @@ function openDom(d,m){
       setStav(d,k,null,pozn||''); map.closePopup();
     };
     const cle=pop.querySelector('.pop-clear[data-s]');
-    if(cle) cle.onclick=()=>{ clearStav(d,k); map.closePopup(); };
+    if(cle) cle.onclick=()=>{ if(typOf(d)==='NN') clearTyp(d,k); clearStav(d,k); map.closePopup(); };
 
     const rOn=pop.querySelector('#rezOn');
     if(rOn) rOn.onclick=()=>{ rezervuj(clenove(d).map(key)); map.closePopup(); };
@@ -941,6 +953,9 @@ async function setTyp(d,k,typ){
     }catch(e){ queuePush({typ:'typ', dum:mk, hodnota:typ}); setSave('offline – ve frontě'); }
   }
 }
+/* Zápis stavu u domu označeného (nebo registrem navrženého) jako NN znamená,
+   že to nebytový objekt není: uložíme verdikt BYT, aby se návrh registru nevrátil. */
+function zrusNN(d,k){ if(jeNN(d)) setTyp(d,k,'BYT'); }
 async function clearTyp(d,k){
   for(const m of clenove(d)) delete typy[key(m)];
   render();
