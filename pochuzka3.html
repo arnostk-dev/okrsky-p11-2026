@@ -163,7 +163,7 @@
   <div class="seg" id="filter">
     <button data-f="moje" class="on">Moje</button>
     <button data-f="zbyva">Zbývá</button>
-    <button data-f="prizn" title="moje rezervované domy, kde máme příznivce">★</button>
+    <button data-f="prizn" title="domy, kde máme příznivce">★</button>
     <button data-f="vse">Vše</button>
     <button data-f="kontrola">Kontrola</button>
   </div>
@@ -369,7 +369,8 @@ function showLegend(){
       '<span class="lbl">R</span><span class="desc">žlutý vnitřek = dům je rezervovaný a ještě nemá aktuální stav '+
       '(sytě moje rezervace, bledě cizí, čí je, říká popup)</span></div>'+
     '<div class="item"><span class="bul" style="background:transparent;border-color:transparent">★</span>'+
-      '<span class="lbl"></span><span class="desc">hvězdička = v domě máme příznivce</span></div>'+
+      '<span class="lbl"></span><span class="desc">hvězdička = v domě máme příznivce '+
+      '(filtr ★ je ukáže všechny, jméno a kontakt až po rezervaci)</span></div>'+
     '<div class="item"><span class="bul" style="background:transparent;border-color:var(--line)"></span>'+
       '<span class="lbl">◦</span><span class="desc">dva body spojené černou čárkou = jeden dům s adresou do dvou ulic, '+
       'stačí označit jeden</span></div>'+
@@ -426,8 +427,8 @@ function initMap(){
       otevrenyKlic=null; renderOdlozen=false;
       document.querySelectorAll('#filter button').forEach(x=>x.classList.remove('on'));
       b.classList.add('on'); filter=b.getAttribute('data-f'); render();
-      if(filter==='prizn' && !Object.keys(przPocty).some(k=>mojeRez(k)))
-        oznameni('V domech, které máš rezervované, zatím nemáme žádného příznivce. Hvězdičku uvidíš u domu, až si ho zarezervuješ.');
+      if(filter==='prizn')
+        oznameni('Domy, kde máme příznivce. Jméno a kontakt uvidíš, až si dům zarezervuješ.');
       if(filter==='moje' && !maMojeRez())
         oznameni('Zatím nemáš rezervovaný žádný dům, proto je mapa prázdná. Přepni na „Vše“ a dům si rezervuj v jeho okénku.');
     };
@@ -514,8 +515,8 @@ function visible(d){
   if(filter==='kontrola') return !typOf(d) && (kProjiti(d) || navrhNN(d));
   if(jeNN(d) && filter!=='vse') return false;
   if(filter==='moje')  return mojeRez(k);
-  // Příznivci: jen MOJE rezervované domy s příznivcem. Server cizí počty ani neposílá.
-  if(filter==='prizn') return mojeRez(k) && !!przPocty[k];
+  // Příznivci: všechny domy s příznivcem (jméno a kontakt až po rezervaci)
+  if(filter==='prizn') return !!przPocty[k];
   if(filter==='zbyva'){ const s=stOf(k); return mojeRez(k) && s!=='A' && s!=='X' && s!=='AA'; }
   return true;
 }
@@ -571,9 +572,9 @@ function render(){
     m.on('click',()=>openDom(d,m));
     m.addTo(layer); markerByKey[k]=m;
 
-    // Hvězdička jen u domu, který mám rezervovaný. Server posílá počty
-    // taky jen pro moje domy, tady je to druhá pojistka.
-    if(przPocty[k] && mojeRez(k)){
+    // Hvězdička u každého domu s příznivcem (od 4. 10. 2026), aby si lidé mohli
+    // vybírat domy. Jméno a kontakt server pošle jen tomu, kdo má dům rezervovaný.
+    if(przPocty[k]){
       L.marker([d.lat,d.lon],{
         interactive:false,
         icon:L.divIcon({className:'',html:'<div style="font-size:22px;line-height:1;color:#FFD34D;'+
@@ -602,7 +603,7 @@ function render(){
    jinak celá Praha 11. Čísla jsou odhad (viz schranek()), proto „~“. */
 function cislo(n){ return Math.round(n).toLocaleString('cs-CZ'); }
 function statChip(roz,rez,tot,mRoz,mRez){
-  if(filter==='moje' || filter==='zbyva' || filter==='prizn')
+  if(filter==='moje' || filter==='zbyva')
     return '<span class="chip" title="moje rezervace: schránek roznesených (A, AA) / ve všech mých rezervovaných domech">'+
       '📬 moje ~'+cislo(mRoz)+' / '+cislo(mRez)+'</span>';
   return '<span class="chip" title="schránek: roznesených (A, AA, bez X) / v rezervovaných domech / celkem na Praze 11 (odhad)">'+
@@ -968,9 +969,9 @@ async function nactiPriznivce(k, el){
       '<div class="p"><span><b>'+esc(p.jmeno)+'</b>'+
       (p.kontakt?'<br><em>'+esc(p.kontakt)+'</em>':'')+
       (p.pozn?'<br><em>'+esc(p.pozn)+'</em>':'')+'</span>'+
-      '<span class="smaz" data-id="'+p.id+'">smazat</span></div>').join('')
+      (SPRAVCE? '<span class="smaz" data-id="'+p.id+'">smazat</span>' : '')+'</div>').join('')   // mazat smí jen správce
       + (muj? '' : '<div style="color:var(--dim);font-size:11px;padding-top:5px">'+
-          'kontakty se zobrazí, až si dům rezervuješ</div>');
+          'jméno a kontakt se zobrazí, až si dům rezervuješ</div>');
     el.querySelectorAll('.smaz').forEach(s=>{
       s.onclick=async()=>{
         if(!confirm('Smazat příznivce?')) return;
